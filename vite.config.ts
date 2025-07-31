@@ -4,5 +4,9 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   base: '/my-telegram-app/',
-  plugins: [react()],
+  plugins: [ react() ],
+  build: {
+    outDir: 'dist',
+    sourcemap: true
+  }
 })
