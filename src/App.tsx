@@ -34,7 +34,7 @@ function App() {
       <p className='read-the-docs'>
         Click on the Vite and React logos to learn more
       </p>
-      <button onClick={() => WebApp.close()}>Закрыть</button>
+      <button onClick={ () => WebApp.close() }>Закрыть</button>
     </>
   )
 }
