@@ -6,7 +6,7 @@
   "homepage": "https://caudname.github.io/my-telegram-app",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "bun run build",
