@@ -9,6 +9,8 @@ export const Example: React.FC = () => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
+        delay: 150,
+        tolerance: 5,
         distance: 5   // optional: how far finger must move before drag starts
       }
     })
