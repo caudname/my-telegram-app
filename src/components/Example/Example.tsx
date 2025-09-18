@@ -17,16 +17,16 @@ export const Example: React.FC = () => {
     useSensor(MouseSensor, {
       // Require the mouse to move by 10 pixels before activating
       activationConstraint: {
-        distance: 0,
-      },
+        distance: 0
+      }
     }),
     useSensor(TouchSensor, {
       // Press delay of 250ms, with tolerance of 5px of movement
       activationConstraint: {
         delay: 250,
-        tolerance: 5,
-      },
-    }),
+        tolerance: 5
+      }
+    })
   )
 
   const handleDragEnd = ({ over }: DragEndEvent) => {
