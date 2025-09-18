@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import {
+  DndContext,
+  type DragEndEvent,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core'
 import { Draggable } from '../Draggable'
 import { Droppable } from '../Droppable'
 
@@ -7,13 +14,19 @@ export const Example: React.FC = () => {
   const [ parent, setParent ] = useState<string | null>(null)
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
+      // Require the mouse to move by 10 pixels before activating
       activationConstraint: {
-        delay: 150,
+        distance: 0,
+      },
+    }),
+    useSensor(TouchSensor, {
+      // Press delay of 250ms, with tolerance of 5px of movement
+      activationConstraint: {
+        delay: 250,
         tolerance: 5,
-        distance: 5   // optional: how far finger must move before drag starts
-      }
-    })
+      },
+    }),
   )
 
   const handleDragEnd = ({ over }: DragEndEvent) => {
