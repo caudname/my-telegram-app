@@ -17,7 +17,7 @@ export const Example: React.FC = () => {
     useSensor(MouseSensor, {
       // Require the mouse to move by 10 pixels before activating
       activationConstraint: {
-        distance: 0
+        distance: 10
       }
     }),
     useSensor(TouchSensor, {

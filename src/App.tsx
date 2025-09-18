@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Example } from './components/Example'
+import { GridDnD } from './components/GridDnD'
 import WebApp from '@twa-dev/sdk'
 import './App.css'
-import GridDnD from './components/GridDnD/GridDnD.tsx'
 
 export const App = () => {
   const [ count, setCount ] = useState(0)
@@ -24,7 +24,7 @@ export const App = () => {
       <div className={ 'example' }>
         <Example />
       </div>
-      <div style={{ padding: "2rem" }}>
+      <div className={ 'example' }>
         <GridDnD />
       </div>
     </div>

@@ -3,8 +3,7 @@ import {
   DndContext,
   useSensor,
   useSensors,
-  PointerSensor,
-  closestCenter, TouchSensor, type DragEndEvent
+  closestCenter, TouchSensor, type DragEndEvent, MouseSensor
 } from "@dnd-kit/core"
 import {
   SortableContext,
@@ -38,15 +37,26 @@ const Cell: React.FC<{ id: string }> = ({ id }) => {
   )
 }
 
-export default function GridDnD() {
+export const GridDnD = () => {
   // Each cell initially contains its own number
   const [ items, setItems ] = useState<string[]>(
     Array.from({ length: 25 }, (_, i) => (i + 1).toString())
   )
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(TouchSensor)
+    useSensor(MouseSensor, {
+      // Require the mouse to move by 10 pixels before activating
+      activationConstraint: {
+        distance: 10
+      }
+    }),
+    useSensor(TouchSensor, {
+      // Press delay of 250ms, with tolerance of 5px of movement
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5
+      }
+    })
   )
 
   const handleDragEnd = (event: DragEndEvent) => {
