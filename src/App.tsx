@@ -3,6 +3,7 @@ import { Example } from './components/Example'
 import { GridDnD } from './components/GridDnD'
 import WebApp from '@twa-dev/sdk'
 import './App.css'
+import { GridDnDExample } from './components/GridDnDExample'
 
 export const App = () => {
   const [ count, setCount ] = useState(0)
@@ -26,6 +27,9 @@ export const App = () => {
       </div>
       <div className={ 'example' }>
         <GridDnD />
+      </div>
+      <div className={ 'example' }>
+        <GridDnDExample />
       </div>
     </div>
   )
