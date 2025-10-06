@@ -5,7 +5,7 @@ import {
   useSensor,
   useSensors,
   useDraggable,
-  type DragEndEvent
+  type DragEndEvent, MouseSensor, TouchSensor
 } from '@dnd-kit/core';
 import './GridDnDExample.css'
 
@@ -44,7 +44,20 @@ export const GridDnDExample = () => {
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 2 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 2 } }),
+    useSensor(MouseSensor, {
+      // Require the mouse to move by 10 pixels before activating
+      activationConstraint: {
+        distance: 10
+      }
+    }),
+    useSensor(TouchSensor, {
+      // Press delay of 250ms, with tolerance of 5px of movement
+      activationConstraint: {
+        delay: 250,
+        tolerance: 5
+      }
+    })
   );
 
   const cells = Array.from({ length: 25 }, (_, i) => i);
