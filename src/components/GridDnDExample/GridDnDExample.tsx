@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import {
   DndContext,
-  PointerSensor,
   useSensor,
   useSensors,
   useDraggable,
-  type DragEndEvent, MouseSensor, TouchSensor
+  type DragMoveEvent,
+  MouseSensor,
+  TouchSensor
 } from '@dnd-kit/core';
-import './GridDnDExample.css'
+import './GridDnDExample.css';
 
 type Position = {
   x: number;
@@ -17,15 +18,16 @@ type Position = {
 interface DraggableBlockProps {
   id: string;
   position: Position;
-  cellSize: number;
 }
 
 function DraggableBlock({ id, position }: DraggableBlockProps) {
-  const { attributes, listeners, setNodeRef } = useDraggable({ id });
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id });
 
   const style: React.CSSProperties = {
     transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
     position: 'absolute',
+    transition: isDragging ? 'none' : 'transform 200ms ease',
+    zIndex: isDragging ? 1000 : 'auto',
   };
 
   return (
@@ -44,49 +46,52 @@ export const GridDnDExample = () => {
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 2 } }),
-    useSensor(MouseSensor, {
-      // Require the mouse to move by 10 pixels before activating
-      activationConstraint: {
-        distance: 10
-      }
-    }),
-    useSensor(TouchSensor, {
-      // Press delay of 250ms, with tolerance of 5px of movement
-      activationConstraint: {
-        delay: 250,
-        tolerance: 5
-      }
-    })
+    useSensor(MouseSensor),
+    useSensor(TouchSensor)
   );
 
   const cells = Array.from({ length: 25 }, (_, i) => i);
 
-  function handleDragEnd(event: DragEndEvent) {
+  // Live dragging
+  function handleDragMove(event: DragMoveEvent) {
     if (!event.delta) return;
 
-    const newX = position.x + event.delta.x;
-    const newY = position.y + event.delta.y;
+    const MAX_DELTA = 40;
 
-    const snappedX = Math.round(newX / cellSize) * cellSize;
-    const snappedY = Math.round(newY / cellSize) * cellSize;
+    const dx = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, event.delta.x));
+    const dy = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, event.delta.y));
+
+    setPosition(prev => ({
+      x: prev.x + dx,
+      y: prev.y + dy,
+    }));
+  }
+
+  // Snap to grid on drop
+  function handleDragEnd() {
+    const snappedX = Math.round(position.x / cellSize) * cellSize;
+    const snappedY = Math.round(position.y / cellSize) * cellSize;
 
     const max = cellSize * 4;
     setPosition({
       x: Math.min(Math.max(snappedX, 0), max),
-      y: Math.min(Math.max(snappedY, 0), max),
+      y: Math.min(Math.max(snappedY, 0), max)
     });
   }
 
   return (
     <div className="container">
-      <h2>Перетаскивание блока поверх Grid 5x5 (snap to grid)</h2>
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <h2>Свободное перетаскивание + Snap to Grid</h2>
+      <DndContext
+        sensors={sensors}
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
+      >
         <div className="grid">
           {cells.map((i) => (
-            <div key={i} className="cell"></div>
+            <div key={i} className="cell" />
           ))}
-          <DraggableBlock id="A" position={position} cellSize={cellSize} />
+          <DraggableBlock id="A" position={position} />
         </div>
       </DndContext>
     </div>
