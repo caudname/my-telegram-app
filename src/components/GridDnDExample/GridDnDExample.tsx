@@ -11,7 +11,7 @@ import {
 import './GridDnDExample.css';
 
 type GridCoord = { col: number; row: number };
-type BlockType = 'standard' | 'tall';
+type BlockType = 'standard' | 'tall' | 'wide';
 
 type Block = {
   id: string;
@@ -26,7 +26,8 @@ const initialBlocks: Block[] = [
   { id: 'A', position: { col: 2, row: 4 }, type: 'standard' },
   { id: 'B', position: { col: 4, row: 2 }, type: 'standard' },
   // { id: 'C', position: { col: 3, row: 2 }, type: 'standard' },
-  { id: 'D', position: { col: 3, row: 0 }, type: 'tall' } // Новый блок
+  { id: 'D', position: { col: 3, row: 0 }, type: 'tall' },
+  { id: 'E', position: { col: 0, row: 0 }, type: 'wide' }
 ];
 
 const obstacles: GridCoord[] = [
@@ -52,13 +53,20 @@ function isOccupied(col: number, row: number, blocks: Block[], ignoreId?: string
 
 function getOccupiedCells(block: Block): GridCoord[] {
   const { col, row } = block.position;
-  if (block.type === 'tall') {
-    return [
-      { col, row },
-      { col, row: row + 1 }
-    ];
+  switch (block.type) {
+    case 'tall':
+      return [
+        { col, row },
+        { col, row: row + 1 }
+      ];
+    case 'wide':
+      return [
+        { col, row },
+        { col: col + 1, row }
+      ];
+    default:
+      return [{ col, row }];
   }
-  return [ { col, row } ];
 }
 
 interface DraggableBlockProps {
@@ -69,17 +77,18 @@ interface DraggableBlockProps {
 function DraggableBlock({ block, draggingId }: DraggableBlockProps) {
   const { attributes, listeners, setNodeRef } = useDraggable({ id: block.id });
 
+  const width = block.type === 'wide' ? cellSize * 2 : cellSize;
   const height = block.type === 'tall' ? cellSize * 2 : cellSize;
   const isBeingDragged = draggingId === block.id;
 
   const style: React.CSSProperties = {
     position: 'absolute',
-    width: cellSize,
+    width,
     height,
     transform: `translate3d(${ block.position.col * cellSize }px, ${ block.position.row * cellSize }px, 0)`,
     transition: isBeingDragged ? 'none' : 'transform 300ms ease',
     zIndex: isBeingDragged ? 1000 : 'auto',
-    backgroundColor: block.type === 'tall' ? '#E67E22' : '#3498DB',
+    backgroundColor: block.type === 'tall' || block.type === 'wide' ? '#E67E22' : '#3498DB',
     color: 'white',
     fontWeight: 'bold',
     display: 'flex',
@@ -182,6 +191,32 @@ function computeNewPosition(
     return nearest || from;
   }
 
+  if (block.type === 'wide') {
+    // Только горизонтальные перемещения
+    if (to.row !== from.row) return from;
+
+    const direction = Math.sign(to.col - from.col);
+    if (direction === 0) return from;
+
+    let nextCol = from.col + direction;
+    while (
+      nextCol >= 0 &&
+      nextCol + 1 < GRID_SIZE &&
+      !isOccupied(nextCol, from.row, blocks, block.id) &&
+      !isOccupied(nextCol + 1, from.row, blocks, block.id)
+      ) {
+      if (nextCol === to.col) {
+        return { col: nextCol, row: from.row };
+      }
+      nextCol += direction;
+    }
+
+    // Найти ближайшую допустимую
+    const validTargets = getValidMoveTargetsForWideBlock(block, blocks);
+    const nearest = validTargets.find(t => t.col === to.col);
+    return nearest || from;
+  }
+
   return from;
 }
 
@@ -258,6 +293,39 @@ function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[]): GridCoo
   return targets;
 }
 
+function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[]): GridCoord[] {
+  const targets: GridCoord[] = [];
+  const { col, row } = block.position;
+
+  // Влево
+  for (let offset = 1; col - offset >= 0; offset++) {
+    const left = col - offset;
+    const right = col - offset + 1;
+
+    if (
+      isOccupied(left, row, blocks, block.id) ||
+      isOccupied(right, row, blocks, block.id)
+    ) break;
+
+    targets.push({ col: left, row });
+  }
+
+  // Вправо
+  for (let offset = 1; col + offset + 1 < GRID_SIZE; offset++) {
+    const left = col + offset;
+    const right = col + offset + 1;
+
+    if (
+      isOccupied(left, row, blocks, block.id) ||
+      isOccupied(right, row, blocks, block.id)
+    ) break;
+
+    targets.push({ col: left, row });
+  }
+
+  return targets;
+}
+
 export const GridDnDExample = () => {
   const [ blocks, setBlocks ] = useState<Block[]>(initialBlocks);
   const [ draggingId, setDraggingId ] = useState<string | null>(null);
@@ -268,19 +336,24 @@ export const GridDnDExample = () => {
     const block = blocks.find(b => b.id === event.active.id);
     if (!block) return;
 
-    setDraggingId(block.id); // <--- ВАЖНО
+    setDraggingId(block.id);
 
     if (block.type === 'standard') {
       const validTargets = getValidJumpTargets(block.position, blocks);
       setHighlightedCells(validTargets);
     } else if (block.type === 'tall') {
       const validTargets = getValidMoveTargetsForTallBlock(block, blocks);
-
       const cellsToHighlight = validTargets.flatMap(({ col, row }) => [
         { col, row },
         { col, row: row + 1 }
       ]);
-
+      setHighlightedCells(cellsToHighlight);
+    } else if (block.type === 'wide') {
+      const validTargets = getValidMoveTargetsForWideBlock(block, blocks);
+      const cellsToHighlight = validTargets.flatMap(({ col, row }) => [
+        { col, row },
+        { col: col + 1, row }
+      ]);
       setHighlightedCells(cellsToHighlight);
     }
   }
