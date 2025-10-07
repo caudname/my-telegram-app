@@ -3,15 +3,14 @@
   display: grid;
   grid-template-columns: repeat(5, 80px);
   grid-template-rows: repeat(5, 80px);
-  width: 400px;
-  height: 400px;
   border: 2px solid #CCCCCC;
   box-sizing: border-box;
+  margin: 0 auto;
 }
 
 .cell {
-  width: 80px;
-  height: 80px;
+  width: 70px;
+  height: 70px;
   border: 1px solid #DDDDDD;
   box-sizing: border-box;
 }
@@ -35,4 +34,24 @@
   user-select: none;
   border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes pulse {
+  0% {
+    background-color: #a3e635;
+    box-shadow: 0 0 0 0 rgba(163, 230, 53, 0.7);
+  }
+  70% {
+    background-color: #bef264;
+    box-shadow: 0 0 0 10px rgba(163, 230, 53, 0);
+  }
+  100% {
+    background-color: #a3e635;
+    box-shadow: 0 0 0 0 rgba(163, 230, 53, 0);
+  }
+}
+
+.cell.highlighted {
+  animation: pulse 1.5s infinite;
+  border-radius: 4px;
 }

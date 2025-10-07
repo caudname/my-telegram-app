@@ -6,14 +6,14 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
-  type DragEndEvent
+  type DragEndEvent, type DragStartEvent
 } from '@dnd-kit/core';
 import './GridDnDExample.css';
 
 type GridCoord = { col: number; row: number };
 type Block = { id: string; position: GridCoord };
 
-const cellSize = 80;
+const cellSize = 70;
 const GRID_SIZE = 5;
 
 const initialBlocks: Block[] = [
@@ -46,10 +46,10 @@ function DraggableBlock({ block }: DraggableBlockProps) {
     position: 'absolute',
     width: cellSize,
     height: cellSize,
-    transform: `translate3d(${block.position.col * cellSize}px, ${block.position.row * cellSize}px, 0)`,
+    transform: `translate3d(${ block.position.col * cellSize }px, ${ block.position.row * cellSize }px, 0)`,
     transition: isDragging ? 'none' : 'transform 300ms ease',
     zIndex: isDragging ? 1000 : 'auto',
-    backgroundColor: '#3498db',
+    backgroundColor: '#3498DB',
     color: 'white',
     fontWeight: 'bold',
     display: 'flex',
@@ -58,19 +58,59 @@ function DraggableBlock({ block }: DraggableBlockProps) {
     borderRadius: 6,
     cursor: 'grab',
     userSelect: 'none',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
   };
 
   return (
-    <div ref={setNodeRef} {...listeners} {...attributes} style={style}>
-      {block.id}
+    <div ref={ setNodeRef } { ...listeners } { ...attributes } style={ style }>
+      { block.id }
     </div>
   );
 }
 
+function getValidJumpTargets(from: GridCoord, blocks: Block[]): GridCoord[] {
+  const directions = [
+    { dc: 0, dr: -1 }, // вверх
+    { dc: 1, dr: 0 },  // вправо
+    { dc: 0, dr: 1 },  // вниз
+    { dc: -1, dr: 0 } // влево
+  ];
+
+  const targets: GridCoord[] = [];
+
+  for (const { dc, dr } of directions) {
+    let jumped = false;
+    let col = from.col + dc;
+    let row = from.row + dr;
+
+    // Пропускаем цепочку занятых клеток
+    while (isOccupied(col, row, blocks)) {
+      jumped = true;
+      col += dc;
+      row += dr;
+
+      if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) {
+        break;
+      }
+    }
+
+    // Если прыгали и нашли свободную клетку — запоминаем
+    if (
+      jumped &&
+      col >= 0 && col < GRID_SIZE &&
+      row >= 0 && row < GRID_SIZE &&
+      !isOccupied(col, row, blocks)
+    ) {
+      targets.push({ col, row });
+    }
+  }
+
+  return targets;
+}
+
 export const GridDnDExample = () => {
   const [ blocks, setBlocks ] = useState<Block[]>(initialBlocks);
-
+  const [ highlightedCells, setHighlightedCells ] = useState<GridCoord[]>([]);
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
 
   /**
@@ -150,14 +190,26 @@ export const GridDnDExample = () => {
     setBlocks(prev =>
       prev.map(b => (b.id === block.id ? { ...b, position: newPos } : b))
     );
+    setHighlightedCells([])
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    const block = blocks.find(b => b.id === event.active.id);
+    if (!block) return;
+
+    const validTargets = getValidJumpTargets(block.position, blocks);
+    setHighlightedCells(validTargets);
   }
 
   const cells = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => i);
 
   return (
     <div className='container'>
-      <h2>Перепрыгивание через цепочку блоков и препятствий</h2>
-      <DndContext sensors={ sensors } onDragEnd={ handleDragEnd }>
+      <DndContext
+        sensors={ sensors }
+        onDragStart={ handleDragStart }
+        onDragEnd={ handleDragEnd }
+      >
         <div
           className='grid'
           style={ {
@@ -174,12 +226,19 @@ export const GridDnDExample = () => {
             const col = i % GRID_SIZE;
             const row = Math.floor(i / GRID_SIZE);
             const isObstacle = obstacles.some(o => o.col === col && o.row === row);
+            const isHighlighted = highlightedCells.some(c => c.col === col && c.row === row);
+
             return (
               <div
                 key={ i }
+                className={ `cell ${ isHighlighted ? 'highlighted' : '' }` }
                 style={ {
                   border: '1px solid #ddd',
-                  backgroundColor: isObstacle ? '#888888' : 'transparent'
+                  backgroundColor: isObstacle
+                    ? '#888888'
+                    : isHighlighted
+                      ? '#A3E635' // базовый цвет, при анимации изменяется
+                      : 'transparent'
                 } }
               />
             );
