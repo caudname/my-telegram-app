@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   DndContext,
   useDraggable,
@@ -20,7 +20,7 @@ const targetCells: TargetCell[] = [
   { id: 'B', position: { col: 2, row: 2 } },
   { id: 'C', position: { col: 0, row: 4 } },
   { id: 'D', position: { col: 4, row: 0 } },
-  { id: 'E', position: { col: 4, row: 4 } },
+  { id: 'E', position: { col: 4, row: 4 } }
 ];
 
 type GridCoord = { col: number; row: number };
@@ -355,7 +355,18 @@ export const GridDnDExample = () => {
   const [ blocks, setBlocks ] = useState<Block[]>(initialBlocks);
   const [ draggingId, setDraggingId ] = useState<string | null>(null);
   const [ highlightedCells, setHighlightedCells ] = useState<GridCoord[]>([]);
+  const [ won, setWon ] = useState(false);
+
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
+
+  // Whenever blocks change, check win condition and update `won`
+  useEffect(() => {
+    if (checkWinCondition(blocks, targetCells)) {
+      setWon(true);
+    } else {
+      setWon(false);
+    }
+  }, [ blocks ]);
 
   function handleDragStart(event: DragStartEvent) {
     const block = blocks.find(b => b.id === event.active.id);
@@ -404,14 +415,15 @@ export const GridDnDExample = () => {
       );
 
       setBlocks(updatedBlocks);
-      console.log('Updated Blocks:', updatedBlocks);
-      console.log('Targets:', targetCells);
-      console.log('Win:', checkWinCondition(updatedBlocks, targetCells));
-      if (checkWinCondition(updatedBlocks, targetCells)) {
-        alert('🎉 Победа! Все стандартные блоки на местах!');
-      }
     }
 
+    setHighlightedCells([]);
+    setDraggingId(null);
+  }
+
+  function resetGame() {
+    setBlocks(initialBlocks);
+    setWon(false);
     setHighlightedCells([]);
     setDraggingId(null);
   }
@@ -478,6 +490,53 @@ export const GridDnDExample = () => {
           )) }
         </div>
       </DndContext>
+
+      {/* Win message overlay */ }
+      { won && (
+        <div
+          style={ {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: cellSize * GRID_SIZE,
+            height: cellSize * GRID_SIZE,
+            backgroundColor: 'rgba(0,0,0,0.75)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            color: 'white',
+            fontSize: 36,
+            fontWeight: 'bold',
+            borderRadius: 8,
+            pointerEvents: 'auto', // allow clicking the button
+            userSelect: 'none',
+            zIndex: 2000,
+            gap: 20,
+            padding: 20,
+          } }
+        >
+          🎉 Победа! Все стандартные блоки на местах!
+          <button
+            onClick={resetGame}
+            style={{
+              padding: '10px 24px',
+              fontSize: 18,
+              borderRadius: 6,
+              border: 'none',
+              cursor: 'pointer',
+              backgroundColor: '#3498DB',
+              color: 'white',
+              fontWeight: 'bold',
+              userSelect: 'none',
+            }}
+            autoFocus
+          >
+            Играть заново
+          </button>
+        </div>
+      ) }
+
     </div>
   );
 };
