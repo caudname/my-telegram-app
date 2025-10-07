@@ -11,45 +11,75 @@ import {
 import './GridDnDExample.css';
 
 type GridCoord = { col: number; row: number };
-type Block = { id: string; position: GridCoord };
+type BlockType = 'standard' | 'tall';
+
+type Block = {
+  id: string;
+  position: GridCoord;
+  type: BlockType;
+};
 
 const cellSize = 70;
 const GRID_SIZE = 5;
 
 const initialBlocks: Block[] = [
-  { id: 'A', position: { col: 2, row: 4 } },
-  { id: 'B', position: { col: 4, row: 2 } },
-  { id: 'C', position: { col: 3, row: 2 } }
-]
+  { id: 'A', position: { col: 2, row: 4 }, type: 'standard' },
+  { id: 'B', position: { col: 4, row: 2 }, type: 'standard' },
+  // { id: 'C', position: { col: 3, row: 2 }, type: 'standard' },
+  { id: 'D', position: { col: 3, row: 0 }, type: 'tall' } // Новый блок
+];
 
 const obstacles: GridCoord[] = [
   { col: 0, row: 1 },
   { col: 1, row: 2 },
   { col: 2, row: 3 }
-]
+];
 
-function isOccupied(col: number, row: number, blocks: Block[]): boolean {
-  if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return true; // за пределами - занято
+function isOccupied(col: number, row: number, blocks: Block[], ignoreId?: string): boolean {
+  if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return true;
   if (obstacles.some(o => o.col === col && o.row === row)) return true;
-  if (blocks.some(b => b.position.col === col && b.position.row === row)) return true;
+
+  for (const block of blocks) {
+    if (block.id === ignoreId) continue;
+    const occupiedCells = getOccupiedCells(block);
+    if (occupiedCells.some(c => c.col === col && c.row === row)) {
+      return true;
+    }
+  }
+
   return false;
+}
+
+function getOccupiedCells(block: Block): GridCoord[] {
+  const { col, row } = block.position;
+  if (block.type === 'tall') {
+    return [
+      { col, row },
+      { col, row: row + 1 }
+    ];
+  }
+  return [ { col, row } ];
 }
 
 interface DraggableBlockProps {
   block: Block;
+  draggingId: string | null
 }
 
-function DraggableBlock({ block }: DraggableBlockProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: block.id });
+function DraggableBlock({ block, draggingId }: DraggableBlockProps) {
+  const { attributes, listeners, setNodeRef } = useDraggable({ id: block.id });
+
+  const height = block.type === 'tall' ? cellSize * 2 : cellSize;
+  const isBeingDragged = draggingId === block.id;
 
   const style: React.CSSProperties = {
     position: 'absolute',
     width: cellSize,
-    height: cellSize,
+    height,
     transform: `translate3d(${ block.position.col * cellSize }px, ${ block.position.row * cellSize }px, 0)`,
-    transition: isDragging ? 'none' : 'transform 300ms ease',
-    zIndex: isDragging ? 1000 : 'auto',
-    backgroundColor: '#3498DB',
+    transition: isBeingDragged ? 'none' : 'transform 300ms ease',
+    zIndex: isBeingDragged ? 1000 : 'auto',
+    backgroundColor: block.type === 'tall' ? '#E67E22' : '#3498DB',
     color: 'white',
     fontWeight: 'bold',
     display: 'flex',
@@ -58,14 +88,101 @@ function DraggableBlock({ block }: DraggableBlockProps) {
     borderRadius: 6,
     cursor: 'grab',
     userSelect: 'none',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+    pointerEvents: 'auto',
+    touchAction: 'none'
   };
 
   return (
-    <div ref={ setNodeRef } { ...listeners } { ...attributes } style={ style }>
+    <div
+      ref={ setNodeRef }
+      { ...listeners }
+      { ...attributes }
+      style={ style }
+      draggable={ false } // предотвращает HTML5 drag
+    >
       { block.id }
     </div>
   );
+}
+
+function computeNewPosition(
+  block: Block,
+  to: GridCoord,
+  blocks: Block[]
+): GridCoord {
+  const from = block.position;
+
+  if (block.type === 'standard') {
+    const dCol = to.col - from.col;
+    const dRow = to.row - from.row;
+
+    const dirCol = Math.sign(dCol);
+    const dirRow = Math.sign(dRow);
+
+    if ((dirCol !== 0 && dirRow !== 0) || (dirCol === 0 && dirRow === 0)) {
+      return from;
+    }
+
+    let currentCol = from.col + dirCol;
+    let currentRow = from.row + dirRow;
+
+    let jumped = false;
+
+    while (
+      currentCol >= 0 &&
+      currentCol < GRID_SIZE &&
+      currentRow >= 0 &&
+      currentRow < GRID_SIZE &&
+      isOccupied(currentCol, currentRow, blocks)
+      ) {
+      currentCol += dirCol;
+      currentRow += dirRow;
+      jumped = true;
+    }
+
+    if (
+      currentCol < 0 ||
+      currentCol >= GRID_SIZE ||
+      currentRow < 0 ||
+      currentRow >= GRID_SIZE
+    ) {
+      return from;
+    }
+
+    if (jumped && !isOccupied(currentCol, currentRow, blocks)) {
+      return { col: currentCol, row: currentRow };
+    }
+
+    return from;
+  }
+
+  if (block.type === 'tall') {
+    // Только вертикальные перемещения
+    if (to.col !== from.col) return from;
+
+    const direction = Math.sign(to.row - from.row);
+    if (direction === 0) return from;
+
+    let nextRow = from.row + direction;
+    while (
+      nextRow >= 0 &&
+      nextRow + 1 < GRID_SIZE &&
+      !isOccupied(from.col, nextRow, blocks, block.id) &&
+      !isOccupied(from.col, nextRow + 1, blocks, block.id)
+      ) {
+      if (nextRow === to.row) {
+        return { col: from.col, row: nextRow };
+      }
+      nextRow += direction;
+    }
+
+    // Если точно не попали — вернём ближайшую допустимую позицию
+    const validTargets = getValidMoveTargetsForTallBlock(block, blocks);
+    const nearest = validTargets.find(t => t.row === to.row);
+    return nearest || from;
+  }
+
+  return from;
 }
 
 function getValidJumpTargets(from: GridCoord, blocks: Block[]): GridCoord[] {
@@ -108,67 +225,64 @@ function getValidJumpTargets(from: GridCoord, blocks: Block[]): GridCoord[] {
   return targets;
 }
 
+function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[]): GridCoord[] {
+  const targets: GridCoord[] = [];
+  const { col, row } = block.position;
+
+  // Вверх
+  for (let offset = 1; row - offset >= 0; offset++) {
+    const upper = row - offset;
+    const lower = row - offset + 1;
+
+    if (
+      isOccupied(col, upper, blocks, block.id) ||
+      isOccupied(col, lower, blocks, block.id)
+    ) break;
+
+    targets.push({ col, row: upper });
+  }
+
+  // Вниз
+  for (let offset = 1; row + offset + 1 < GRID_SIZE; offset++) {
+    const upper = row + offset;
+    const lower = row + offset + 1;
+
+    if (
+      isOccupied(col, upper, blocks, block.id) ||
+      isOccupied(col, lower, blocks, block.id)
+    ) break;
+
+    targets.push({ col, row: upper });
+  }
+
+  return targets;
+}
+
 export const GridDnDExample = () => {
   const [ blocks, setBlocks ] = useState<Block[]>(initialBlocks);
+  const [ draggingId, setDraggingId ] = useState<string | null>(null);
   const [ highlightedCells, setHighlightedCells ] = useState<GridCoord[]>([]);
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
 
-  /**
-   * Вычисляем новую позицию с возможностью перепрыгивать через несколько подряд
-   * занятых ячеек (препятствий или блоков) в выбранном направлении.
-   */
-  function computeNewPosition(
-    from: GridCoord,
-    to: GridCoord,
-    blocks: Block[]
-  ): GridCoord {
-    const dCol = to.col - from.col;
-    const dRow = to.row - from.row;
+  function handleDragStart(event: DragStartEvent) {
+    const block = blocks.find(b => b.id === event.active.id);
+    if (!block) return;
 
-    // Движение должно быть в одну из 4-х сторон (не по диагонали)
-    const dirCol = Math.sign(dCol);
-    const dirRow = Math.sign(dRow);
+    setDraggingId(block.id); // <--- ВАЖНО
 
-    // Проверка: движение строго по вертикали или горизонтали
-    if ((dirCol !== 0 && dirRow !== 0) || (dirCol === 0 && dirRow === 0)) {
-      return from;
+    if (block.type === 'standard') {
+      const validTargets = getValidJumpTargets(block.position, blocks);
+      setHighlightedCells(validTargets);
+    } else if (block.type === 'tall') {
+      const validTargets = getValidMoveTargetsForTallBlock(block, blocks);
+
+      const cellsToHighlight = validTargets.flatMap(({ col, row }) => [
+        { col, row },
+        { col, row: row + 1 }
+      ]);
+
+      setHighlightedCells(cellsToHighlight);
     }
-
-    let currentCol = from.col + dirCol;
-    let currentRow = from.row + dirRow;
-
-    let jumped = false;
-
-    // Продвигаемся по направлению, пока клетки заняты
-    while (
-      currentCol >= 0 &&
-      currentCol < GRID_SIZE &&
-      currentRow >= 0 &&
-      currentRow < GRID_SIZE &&
-      isOccupied(currentCol, currentRow, blocks)
-      ) {
-      currentCol += dirCol;
-      currentRow += dirRow;
-      jumped = true;
-    }
-
-    // Проверка выхода за границы
-    if (
-      currentCol < 0 ||
-      currentCol >= GRID_SIZE ||
-      currentRow < 0 ||
-      currentRow >= GRID_SIZE
-    ) {
-      return from;
-    }
-
-    // Если мы прыгнули (т.е. было хотя бы одно препятствие) и нашли свободную клетку — разрешаем прыжок
-    if (jumped && !isOccupied(currentCol, currentRow, blocks)) {
-      return { col: currentCol, row: currentRow };
-    }
-
-    // Иначе — движение запрещено
-    return from;
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -176,7 +290,6 @@ export const GridDnDExample = () => {
     const block = blocks.find(b => b.id === active.id);
     if (!block) return;
 
-    // Расчёт новой целевой позиции в сетке
     const approxCol = block.position.col + Math.round(delta.x / cellSize);
     const approxRow = block.position.row + Math.round(delta.y / cellSize);
 
@@ -185,21 +298,18 @@ export const GridDnDExample = () => {
       row: Math.min(Math.max(approxRow, 0), GRID_SIZE - 1)
     };
 
-    const newPos = computeNewPosition(block.position, targetPos, blocks);
+    const newPos = computeNewPosition(block, targetPos, blocks);
 
-    setBlocks(prev =>
-      prev.map(b => (b.id === block.id ? { ...b, position: newPos } : b))
-    );
-    setHighlightedCells([])
+    if (newPos.col !== block.position.col || newPos.row !== block.position.row) {
+      setBlocks(prev =>
+        prev.map(b => (b.id === block.id ? { ...b, position: newPos } : b))
+      );
+    }
+
+    setHighlightedCells([]);
+    setDraggingId(null); // <--- СБРОС
   }
 
-  function handleDragStart(event: DragStartEvent) {
-    const block = blocks.find(b => b.id === event.active.id);
-    if (!block) return;
-
-    const validTargets = getValidJumpTargets(block.position, blocks);
-    setHighlightedCells(validTargets);
-  }
 
   const cells = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => i);
 
@@ -237,14 +347,14 @@ export const GridDnDExample = () => {
                   backgroundColor: isObstacle
                     ? '#888888'
                     : isHighlighted
-                      ? '#A3E635' // базовый цвет, при анимации изменяется
+                      ? '#A3E635'
                       : 'transparent'
                 } }
               />
             );
           }) }
           { blocks.map(block => (
-            <DraggableBlock key={ block.id } block={ block } />
+            <DraggableBlock key={ block.id } block={ block } draggingId={ draggingId } />
           )) }
         </div>
       </DndContext>
