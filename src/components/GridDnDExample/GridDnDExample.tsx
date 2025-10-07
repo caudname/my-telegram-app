@@ -493,50 +493,13 @@ export const GridDnDExample = () => {
 
       {/* Win message overlay */ }
       { won && (
-        <div
-          style={ {
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: cellSize * GRID_SIZE,
-            height: cellSize * GRID_SIZE,
-            backgroundColor: 'rgba(0,0,0,0.75)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            color: 'white',
-            fontSize: 36,
-            fontWeight: 'bold',
-            borderRadius: 8,
-            pointerEvents: 'auto', // allow clicking the button
-            userSelect: 'none',
-            zIndex: 2000,
-            gap: 20,
-            padding: 20,
-          } }
-        >
-          🎉 Победа! Все стандартные блоки на местах!
-          <button
-            onClick={resetGame}
-            style={{
-              padding: '10px 24px',
-              fontSize: 18,
-              borderRadius: 6,
-              border: 'none',
-              cursor: 'pointer',
-              backgroundColor: '#3498DB',
-              color: 'white',
-              fontWeight: 'bold',
-              userSelect: 'none',
-            }}
-            autoFocus
-          >
+        <div className='win-overlay'>
+          <span className={ 'win-icon' }>🎉</span><br /> Победа!<br />Все блоки на местах!
+          <button onClick={ resetGame } className='win-button' autoFocus>
             Играть заново
           </button>
         </div>
       ) }
-
     </div>
   );
 };
