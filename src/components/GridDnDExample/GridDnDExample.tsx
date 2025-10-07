@@ -446,7 +446,6 @@ export const GridDnDExample = () => {
             display: 'grid',
             gridTemplateColumns: `repeat(${ GRID_SIZE }, ${ cellSize }px)`,
             gridTemplateRows: `repeat(${ GRID_SIZE }, ${ cellSize }px)`,
-            border: '2px solid #ccc'
           } }
         >
           { cells.map((_, i) => {
@@ -461,7 +460,7 @@ export const GridDnDExample = () => {
                 key={ i }
                 className={ `cell ${ isHighlighted ? 'highlighted' : '' }` }
                 style={ {
-                  border: isTargetCell ? '2px dashed #FACC15' : '1px solid #ddd',
+                  border: isTargetCell ? '1px dashed #FACC15' : '1px solid #ddd',
                   backgroundColor: isObstacle
                     ? '#888888'
                     : isHighlighted
@@ -494,7 +493,9 @@ export const GridDnDExample = () => {
       {/* Win message overlay */ }
       { won && (
         <div className='win-overlay'>
-          <span className={ 'win-icon' }>🎉</span><br /> Победа!<br />Все блоки на местах!
+          <span className={ 'win-icon' }>🎉</span>
+          <br />
+          Победа!
           <button onClick={ resetGame } className='win-button' autoFocus>
             Играть заново
           </button>

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import WebApp from '@twa-dev/sdk'
-import './App.css'
 import { GridDnDExample } from './components/GridDnDExample'
+import './App.css'
 
 export const App = () => {
   useEffect(() => {
@@ -11,10 +11,8 @@ export const App = () => {
 
   return (
     <div id={ 'container' }>
-      <button onClick={ () => WebApp.close() }>Закрыть</button>
-      <div className={ 'example' }>
-        <GridDnDExample />
-      </div>
+      <GridDnDExample />
+      <button onClick={ () => WebApp.close() } style={ { marginTop: '40px' } }>Закрыть</button>
     </div>
   )
 }
