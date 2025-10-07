@@ -10,6 +10,19 @@ import {
 } from '@dnd-kit/core';
 import './GridDnDExample.css';
 
+type TargetCell = {
+  id: string; // должен соответствовать id блока
+  position: GridCoord;
+};
+
+const targetCells: TargetCell[] = [
+  { id: 'A', position: { col: 0, row: 0 } },
+  { id: 'B', position: { col: 2, row: 2 } },
+  { id: 'C', position: { col: 0, row: 4 } },
+  { id: 'D', position: { col: 4, row: 0 } },
+  { id: 'E', position: { col: 4, row: 4 } },
+];
+
 type GridCoord = { col: number; row: number };
 type BlockType = 'standard' | 'tall' | 'wide';
 
@@ -24,10 +37,9 @@ const GRID_SIZE = 5;
 
 const initialBlocks: Block[] = [
   { id: 'A', position: { col: 2, row: 4 }, type: 'standard' },
-  { id: 'B', position: { col: 4, row: 2 }, type: 'standard' },
-  // { id: 'C', position: { col: 3, row: 2 }, type: 'standard' },
-  { id: 'D', position: { col: 3, row: 0 }, type: 'tall' },
-  { id: 'E', position: { col: 0, row: 0 }, type: 'wide' }
+  { id: 'C', position: { col: 4, row: 2 }, type: 'standard' },
+  { id: 'D', position: { col: 3, row: 0 }, type: 'tall' }
+  // { id: 'E', position: { col: 0, row: 0 }, type: 'wide' }
 ];
 
 const obstacles: GridCoord[] = [
@@ -35,6 +47,19 @@ const obstacles: GridCoord[] = [
   { col: 1, row: 2 },
   { col: 2, row: 3 }
 ];
+
+function checkWinCondition(blocks: Block[], targets: TargetCell[]): boolean {
+  const standardBlocks = blocks.filter(b => b.type === 'standard');
+
+  return standardBlocks.every(block =>
+    targets.some(target =>
+      getOccupiedCells(block).some(cell =>
+        cell.col === target.position.col &&
+        cell.row === target.position.row
+      )
+    )
+  );
+}
 
 function isOccupied(col: number, row: number, blocks: Block[], ignoreId?: string): boolean {
   if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return true;
@@ -65,7 +90,7 @@ function getOccupiedCells(block: Block): GridCoord[] {
         { col: col + 1, row }
       ];
     default:
-      return [{ col, row }];
+      return [ { col, row } ];
   }
 }
 
@@ -374,15 +399,22 @@ export const GridDnDExample = () => {
     const newPos = computeNewPosition(block, targetPos, blocks);
 
     if (newPos.col !== block.position.col || newPos.row !== block.position.row) {
-      setBlocks(prev =>
-        prev.map(b => (b.id === block.id ? { ...b, position: newPos } : b))
+      const updatedBlocks = blocks.map(b =>
+        b.id === block.id ? { ...b, position: newPos } : b
       );
+
+      setBlocks(updatedBlocks);
+      console.log('Updated Blocks:', updatedBlocks);
+      console.log('Targets:', targetCells);
+      console.log('Win:', checkWinCondition(updatedBlocks, targetCells));
+      if (checkWinCondition(updatedBlocks, targetCells)) {
+        alert('🎉 Победа! Все стандартные блоки на местах!');
+      }
     }
 
     setHighlightedCells([]);
-    setDraggingId(null); // <--- СБРОС
+    setDraggingId(null);
   }
-
 
   const cells = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => i);
 
@@ -410,20 +442,35 @@ export const GridDnDExample = () => {
             const row = Math.floor(i / GRID_SIZE);
             const isObstacle = obstacles.some(o => o.col === col && o.row === row);
             const isHighlighted = highlightedCells.some(c => c.col === col && c.row === row);
+            const isTargetCell = targetCells.some(t => t.position.col === col && t.position.row === row);
 
             return (
               <div
                 key={ i }
                 className={ `cell ${ isHighlighted ? 'highlighted' : '' }` }
                 style={ {
-                  border: '1px solid #ddd',
+                  border: isTargetCell ? '2px dashed #FACC15' : '1px solid #ddd',
                   backgroundColor: isObstacle
                     ? '#888888'
                     : isHighlighted
                       ? '#A3E635'
-                      : 'transparent'
+                      : isTargetCell
+                        ? '#FACC15' // жёлтый
+                        : 'transparent'
                 } }
-              />
+              >
+                { isTargetCell && (
+                  <div
+                    style={ {
+                      fontSize: 18,
+                      position: 'absolute',
+                      pointerEvents: 'none'
+                    } }
+                  >
+                    🎯
+                  </div>
+                ) }
+              </div>
             );
           }) }
           { blocks.map(block => (
