@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo, useImperativeHandle } from 'react';
 import {
   DndContext,
   useDraggable,
@@ -368,15 +368,15 @@ function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[], currentO
   return targets;
 }
 
-interface GridDnDExampleProps {
+export interface GridDnDExampleProps {
   levelData?: LevelData | null;
-  onNextLevel?: () => void;
+ onNextLevel?: () => void;
   onReturnToMenu?: () => void;
   hasNextLevel?: boolean;
 }
 
-export const GridDnDExample: React.FC<GridDnDExampleProps> = ({ levelData, onNextLevel, onReturnToMenu, hasNextLevel }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+export const GridDnDExample: React.ForwardRefRenderFunction<{ resetLevel: () => void }, GridDnDExampleProps> = ({ levelData, onNextLevel, onReturnToMenu, hasNextLevel }, ref) => {
+ const containerRef = useRef<HTMLDivElement>(null);
      const [cellSize, setCellSize] = useState<CellSize>({ width: 70, height: 70 });
      
      // Используем переданный уровень или дефолтные значения
@@ -400,9 +400,23 @@ export const GridDnDExample: React.FC<GridDnDExampleProps> = ({ levelData, onNex
         useEffect(() => {
           setBlocks(currentInitialBlocks);
         }, [currentInitialBlocks]);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [highlightedCells, setHighlightedCells] = useState<GridCoord[]>([]);
-  const [won, setWon] = useState(false);
+        
+        // Добавляем функцию для сброса уровня
+        const resetLevel = () => {
+          setBlocks(currentInitialBlocks);
+          setWon(false);
+          setHighlightedCells([]);
+          setDraggingId(null);
+        };
+        
+        // Экспортируем функцию resetLevel через ref, чтобы родительский компонент мог вызвать её
+        useImperativeHandle(ref, () => ({
+          resetLevel
+        }));
+        
+   const [draggingId, setDraggingId] = useState<string | null>(null);
+   const [highlightedCells, setHighlightedCells] = useState<GridCoord[]>([]);
+   const [won, setWon] = useState(false);
 
   // Обновляем размеры ячейки при изменении размеров контейнера
   const updateCellSize = useCallback(() => {

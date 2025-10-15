@@ -55,10 +55,6 @@ export const App = () => {
     setCurrentView('mainMenu');
   };
 
-  const handleBackToLevelSelection = () => {
-    setCurrentView('levelSelection');
-  };
-
   const handleExit = () => {
     WebApp.close();
   };
@@ -76,8 +72,16 @@ export const App = () => {
           {selectedLevel && (
             <h2 style={ { margin: '0 0 10px 0' } }>Уровень {selectedLevel.id}</h2>
           )}
-          <GridDnDExample levelData={selectedLevel} onNextLevel={handleNextLevel} onReturnToMenu={() => setCurrentView('mainMenu')} hasNextLevel={levels ? hasNextLevel() : false} />
-          <button onClick={ handleBackToLevelSelection }>🏠</button>
+          <GridDnDExample ref={ (gridRef) => { (window as any).resetGridLevel = gridRef?.resetLevel } } levelData={selectedLevel} onNextLevel={handleNextLevel} onReturnToMenu={() => setCurrentView('mainMenu')} hasNextLevel={levels ? hasNextLevel() : false} />
+          <div style={ { display: 'flex', gap: '10px' } }>
+            <button onClick={ handleBackToMenu }>🏠</button>
+            <button onClick={ () => {
+              // Рестарт уровня - сброс до начального состояния
+              if (typeof (window as any).resetGridLevel === 'function') {
+                (window as any).resetGridLevel();
+              }
+            } }>🔄</button>
+          </div>
         </div>
       )}
     </div>
