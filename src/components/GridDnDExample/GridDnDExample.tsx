@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   DndContext,
   useDraggable,
@@ -32,7 +32,6 @@ type Block = {
   type: BlockType;
 };
 
-const cellSize = 70;
 const GRID_SIZE = 5;
 
 const initialBlocks: Block[] = [
@@ -94,23 +93,29 @@ function getOccupiedCells(block: Block): GridCoord[] {
   }
 }
 
-interface DraggableBlockProps {
-  block: Block;
-  draggingId: string | null
+interface CellSize {
+  width: number;
+  height: number;
 }
 
-function DraggableBlock({ block, draggingId }: DraggableBlockProps) {
+interface DraggableBlockProps {
+  block: Block;
+  draggingId: string | null;
+  cellSize: CellSize;
+}
+
+function DraggableBlock({ block, draggingId, cellSize }: DraggableBlockProps) {
   const { attributes, listeners, setNodeRef } = useDraggable({ id: block.id });
 
-  const width = block.type === 'wide' ? cellSize * 2 : cellSize;
-  const height = block.type === 'tall' ? cellSize * 2 : cellSize;
+  const width = block.type === 'wide' ? cellSize.width * 2 : cellSize.width;
+  const height = block.type === 'tall' ? cellSize.height * 2 : cellSize.height;
   const isBeingDragged = draggingId === block.id;
 
   const style: React.CSSProperties = {
     position: 'absolute',
     width,
     height,
-    transform: `translate3d(${ block.position.col * cellSize }px, ${ block.position.row * cellSize }px, 0)`,
+    transform: `translate3d(${ block.position.col * cellSize.width }px, ${ block.position.row * cellSize.height }px, 0)`,
     transition: isBeingDragged ? 'none' : 'transform 300ms ease',
     zIndex: isBeingDragged ? 1000 : 'auto',
     backgroundColor: block.type === 'tall' || block.type === 'wide' ? '#E67E22' : '#3498DB',
@@ -352,10 +357,53 @@ function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[]): GridCoo
 }
 
 export const GridDnDExample = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [cellSize, setCellSize] = useState<CellSize>({ width: 70, height: 70 });
   const [ blocks, setBlocks ] = useState<Block[]>(initialBlocks);
   const [ draggingId, setDraggingId ] = useState<string | null>(null);
   const [ highlightedCells, setHighlightedCells ] = useState<GridCoord[]>([]);
   const [ won, setWon ] = useState(false);
+
+  // Обновляем размеры ячейки при изменении размеров контейнера
+  const updateCellSize = useCallback(() => {
+    if (containerRef.current) {
+      const containerWidth = containerRef.current.offsetWidth;
+      const containerHeight = containerRef.current.offsetHeight;
+      
+      // Размер ячейки как 1/5 от ширины и высоты контейнера
+      const newCellSize = {
+        width: containerWidth / GRID_SIZE,
+        height: containerHeight / GRID_SIZE
+      };
+      
+      setCellSize(newCellSize);
+    }
+  }, []);
+
+  // Обновляем размеры при монтировании изменении размеров окна
+  useEffect(() => {
+    updateCellSize();
+    
+    const handleResize = () => {
+      updateCellSize();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Также добавим ResizeObserver для отслеживания изменений размера контейнера
+    const resizeObserver = new ResizeObserver(() => {
+      updateCellSize();
+    });
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+    };
+  }, [updateCellSize, containerRef]);
 
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
 
@@ -399,8 +447,8 @@ export const GridDnDExample = () => {
     const block = blocks.find(b => b.id === active.id);
     if (!block) return;
 
-    const approxCol = block.position.col + Math.round(delta.x / cellSize);
-    const approxRow = block.position.row + Math.round(delta.y / cellSize);
+    const approxCol = block.position.col + Math.round(delta.x / cellSize.width);
+    const approxRow = block.position.row + Math.round(delta.y / cellSize.height);
 
     const targetPos = {
       col: Math.min(Math.max(approxCol, 0), GRID_SIZE - 1),
@@ -431,7 +479,7 @@ export const GridDnDExample = () => {
   const cells = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => i);
 
   return (
-    <div className='container'>
+    <div className='container' ref={containerRef}>
       <DndContext
         sensors={ sensors }
         onDragStart={ handleDragStart }
@@ -441,11 +489,11 @@ export const GridDnDExample = () => {
           className='grid'
           style={ {
             position: 'relative',
-            width: cellSize * GRID_SIZE,
-            height: cellSize * GRID_SIZE,
+            width: '100%',
+            height: cellSize.width * GRID_SIZE, // Используем width для квадратной сетки
             display: 'grid',
-            gridTemplateColumns: `repeat(${ GRID_SIZE }, ${ cellSize }px)`,
-            gridTemplateRows: `repeat(${ GRID_SIZE }, ${ cellSize }px)`,
+            gridTemplateColumns: `repeat(${ GRID_SIZE }, 1fr)`,
+            gridTemplateRows: `repeat(${ GRID_SIZE }, 1fr)`,
           } }
         >
           { cells.map((_, i) => {
@@ -485,7 +533,7 @@ export const GridDnDExample = () => {
             );
           }) }
           { blocks.map(block => (
-            <DraggableBlock key={ block.id } block={ block } draggingId={ draggingId } />
+            <DraggableBlock key={ block.id } block={ block } draggingId={ draggingId } cellSize={cellSize} />
           )) }
         </div>
       </DndContext>
