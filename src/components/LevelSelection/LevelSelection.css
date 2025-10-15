@@ -1,0 +1,89 @@
+.level-selection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100vh;
+  width: 100%;
+  padding-top: 2rem;
+  background-color: #f0f0f0;
+  box-sizing: border-box;
+}
+
+.level-selection-header {
+  display: flex;
+  align-items: center;
+  width: 90%;
+  max-width: 800px;
+  margin-bottom: 2rem;
+}
+
+.back-arrow-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-right: 1rem;
+  color: #333;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+}
+
+.back-arrow-button:hover {
+  background-color: #e0e0e0;
+}
+
+.back-arrow-button:focus {
+  outline: 2px solid #0056b3;
+  outline-offset: 2px;
+}
+
+.level-selection-title {
+  font-size: 1.5rem;
+  color: #333;
+  text-align: center;
+  flex: 1;
+  margin: 0;
+}
+
+.levels-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  width: 90%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.level-button {
+  aspect-ratio: 1; /* Makes the button square */
+  width: 100%;
+  max-width: 100px; /* Увеличенный размер кнопки */
+  padding: 0;
+  font-size: 1.6rem; /* Увеличенный размер текста */
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+  box-sizing: border-box;
+}
+
+.level-button:hover {
+  background-color: #0056b3;
+}
+
+.level-button:focus {
+  outline: 2px solid #0056b3;
+  outline-offset: 2px;
+}

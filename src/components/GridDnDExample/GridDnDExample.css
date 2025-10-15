@@ -6,6 +6,7 @@
   grid-template-rows: repeat(5, 1fr);
   box-sizing: border-box;
   margin: 0 auto;
+  background-color: #fff;
 }
 
 .cell {
