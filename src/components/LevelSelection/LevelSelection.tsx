@@ -1,13 +1,15 @@
 import React from 'react';
 import './LevelSelection.css';
+import levelsData from '../../data/levels.json';
+import { type LevelData } from '../GridDnDExample/GridDnDExample';
 
 interface LevelSelectionProps {
-  onSelectLevel: (level: number) => void;
+  onSelectLevel: (level: LevelData) => void;
   onBack: () => void;
 }
 
 const LevelSelection: React.FC<LevelSelectionProps> = ({ onSelectLevel, onBack }) => {
-  const levels = Array.from({ length: 60 }, (_, i) => i + 1);
+  const levels = levelsData as LevelData[];
 
   return (
     <div className="level-selection">
@@ -24,12 +26,12 @@ const LevelSelection: React.FC<LevelSelectionProps> = ({ onSelectLevel, onBack }
       <div className="levels-grid">
         {levels.map((level) => (
           <button
-            key={level}
+            key={level.id}
             className="level-button"
             onClick={() => onSelectLevel(level)}
-            aria-label={`Уровень ${level}`}
+            aria-label={`Уровень ${level.id}`}
           >
-            {level}
+            {level.id}
           </button>
         ))}
       </div>

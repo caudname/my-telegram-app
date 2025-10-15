@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   DndContext,
   useDraggable,
@@ -15,14 +15,6 @@ type TargetCell = {
   position: GridCoord;
 };
 
-const targetCells: TargetCell[] = [
-  { id: 'A', position: { col: 0, row: 0 } },
-  { id: 'B', position: { col: 2, row: 2 } },
-  { id: 'C', position: { col: 0, row: 4 } },
-  { id: 'D', position: { col: 4, row: 0 } },
-  { id: 'E', position: { col: 4, row: 4 } }
-];
-
 type GridCoord = { col: number; row: number };
 type BlockType = 'standard' | 'tall' | 'wide';
 
@@ -32,16 +24,35 @@ type Block = {
   type: BlockType;
 };
 
+type Obstacle = {
+  col: number;
+  row: number;
+};
+
+export interface LevelData {
+  id: number;
+  initialBlocks: Block[];
+  obstacles: Obstacle[];
+}
+
 const GRID_SIZE = 5;
 
-const initialBlocks: Block[] = [
+const defaultTargetCells: TargetCell[] = [
+  { id: 'A', position: { col: 0, row: 0 } },
+  { id: 'B', position: { col: 2, row: 2 } },
+  { id: 'C', position: { col: 0, row: 4 } },
+  { id: 'D', position: { col: 4, row: 0 } },
+  { id: 'E', position: { col: 4, row: 4 } }
+];
+
+const defaultInitialBlocks: Block[] = [
   { id: 'A', position: { col: 2, row: 4 }, type: 'standard' },
   { id: 'C', position: { col: 4, row: 2 }, type: 'standard' },
   { id: 'D', position: { col: 3, row: 0 }, type: 'tall' }
   // { id: 'E', position: { col: 0, row: 0 }, type: 'wide' }
 ];
 
-const obstacles: GridCoord[] = [
+const defaultObstacles: GridCoord[] = [
   { col: 0, row: 1 },
   { col: 1, row: 2 },
   { col: 2, row: 3 }
@@ -60,9 +71,9 @@ function checkWinCondition(blocks: Block[], targets: TargetCell[]): boolean {
   );
 }
 
-function isOccupied(col: number, row: number, blocks: Block[], ignoreId?: string): boolean {
+function isOccupied(col: number, row: number, blocks: Block[], ignoreId?: string, currentObstacles: GridCoord[] = defaultObstacles): boolean {
   if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return true;
-  if (obstacles.some(o => o.col === col && o.row === row)) return true;
+  if (currentObstacles.some(o => o.col === col && o.row === row)) return true;
 
   for (const block of blocks) {
     if (block.id === ignoreId) continue;
@@ -145,9 +156,10 @@ function DraggableBlock({ block, draggingId, cellSize }: DraggableBlockProps) {
 }
 
 function computeNewPosition(
-  block: Block,
+ block: Block,
   to: GridCoord,
-  blocks: Block[]
+  blocks: Block[],
+  currentObstacles: GridCoord[] = defaultObstacles
 ): GridCoord {
   const from = block.position;
 
@@ -172,7 +184,7 @@ function computeNewPosition(
       currentCol < GRID_SIZE &&
       currentRow >= 0 &&
       currentRow < GRID_SIZE &&
-      isOccupied(currentCol, currentRow, blocks)
+      isOccupied(currentCol, currentRow, blocks, undefined, currentObstacles)
       ) {
       currentCol += dirCol;
       currentRow += dirRow;
@@ -188,7 +200,7 @@ function computeNewPosition(
       return from;
     }
 
-    if (jumped && !isOccupied(currentCol, currentRow, blocks)) {
+    if (jumped && !isOccupied(currentCol, currentRow, blocks, undefined, currentObstacles)) {
       return { col: currentCol, row: currentRow };
     }
 
@@ -206,8 +218,8 @@ function computeNewPosition(
     while (
       nextRow >= 0 &&
       nextRow + 1 < GRID_SIZE &&
-      !isOccupied(from.col, nextRow, blocks, block.id) &&
-      !isOccupied(from.col, nextRow + 1, blocks, block.id)
+      !isOccupied(from.col, nextRow, blocks, block.id, currentObstacles) &&
+      !isOccupied(from.col, nextRow + 1, blocks, block.id, currentObstacles)
       ) {
       if (nextRow === to.row) {
         return { col: from.col, row: nextRow };
@@ -216,7 +228,7 @@ function computeNewPosition(
     }
 
     // Если точно не попали — вернём ближайшую допустимую позицию
-    const validTargets = getValidMoveTargetsForTallBlock(block, blocks);
+    const validTargets = getValidMoveTargetsForTallBlock(block, blocks, currentObstacles);
     const nearest = validTargets.find(t => t.row === to.row);
     return nearest || from;
   }
@@ -232,8 +244,8 @@ function computeNewPosition(
     while (
       nextCol >= 0 &&
       nextCol + 1 < GRID_SIZE &&
-      !isOccupied(nextCol, from.row, blocks, block.id) &&
-      !isOccupied(nextCol + 1, from.row, blocks, block.id)
+      !isOccupied(nextCol, from.row, blocks, block.id, currentObstacles) &&
+      !isOccupied(nextCol + 1, from.row, blocks, block.id, currentObstacles)
       ) {
       if (nextCol === to.col) {
         return { col: nextCol, row: from.row };
@@ -242,7 +254,7 @@ function computeNewPosition(
     }
 
     // Найти ближайшую допустимую
-    const validTargets = getValidMoveTargetsForWideBlock(block, blocks);
+    const validTargets = getValidMoveTargetsForWideBlock(block, blocks, currentObstacles);
     const nearest = validTargets.find(t => t.col === to.col);
     return nearest || from;
   }
@@ -250,7 +262,7 @@ function computeNewPosition(
   return from;
 }
 
-function getValidJumpTargets(from: GridCoord, blocks: Block[]): GridCoord[] {
+function getValidJumpTargets(from: GridCoord, blocks: Block[], currentObstacles: GridCoord[] = defaultObstacles): GridCoord[] {
   const directions = [
     { dc: 0, dr: -1 }, // вверх
     { dc: 1, dr: 0 },  // вправо
@@ -266,7 +278,7 @@ function getValidJumpTargets(from: GridCoord, blocks: Block[]): GridCoord[] {
     let row = from.row + dr;
 
     // Пропускаем цепочку занятых клеток
-    while (isOccupied(col, row, blocks)) {
+    while (isOccupied(col, row, blocks, undefined, currentObstacles)) {
       jumped = true;
       col += dc;
       row += dr;
@@ -281,7 +293,7 @@ function getValidJumpTargets(from: GridCoord, blocks: Block[]): GridCoord[] {
       jumped &&
       col >= 0 && col < GRID_SIZE &&
       row >= 0 && row < GRID_SIZE &&
-      !isOccupied(col, row, blocks)
+      !isOccupied(col, row, blocks, undefined, currentObstacles)
     ) {
       targets.push({ col, row });
     }
@@ -290,7 +302,7 @@ function getValidJumpTargets(from: GridCoord, blocks: Block[]): GridCoord[] {
   return targets;
 }
 
-function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[]): GridCoord[] {
+function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[], currentObstacles: GridCoord[] = defaultObstacles): GridCoord[] {
   const targets: GridCoord[] = [];
   const { col, row } = block.position;
 
@@ -300,8 +312,8 @@ function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[]): GridCoo
     const lower = row - offset + 1;
 
     if (
-      isOccupied(col, upper, blocks, block.id) ||
-      isOccupied(col, lower, blocks, block.id)
+      isOccupied(col, upper, blocks, block.id, currentObstacles) ||
+      isOccupied(col, lower, blocks, block.id, currentObstacles)
     ) break;
 
     targets.push({ col, row: upper });
@@ -313,8 +325,8 @@ function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[]): GridCoo
     const lower = row + offset + 1;
 
     if (
-      isOccupied(col, upper, blocks, block.id) ||
-      isOccupied(col, lower, blocks, block.id)
+      isOccupied(col, upper, blocks, block.id, currentObstacles) ||
+      isOccupied(col, lower, blocks, block.id, currentObstacles)
     ) break;
 
     targets.push({ col, row: upper });
@@ -323,7 +335,7 @@ function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[]): GridCoo
   return targets;
 }
 
-function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[]): GridCoord[] {
+function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[], currentObstacles: GridCoord[] = defaultObstacles): GridCoord[] {
   const targets: GridCoord[] = [];
   const { col, row } = block.position;
 
@@ -333,8 +345,8 @@ function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[]): GridCoo
     const right = col - offset + 1;
 
     if (
-      isOccupied(left, row, blocks, block.id) ||
-      isOccupied(right, row, blocks, block.id)
+      isOccupied(left, row, blocks, block.id, currentObstacles) ||
+      isOccupied(right, row, blocks, block.id, currentObstacles)
     ) break;
 
     targets.push({ col: left, row });
@@ -346,8 +358,8 @@ function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[]): GridCoo
     const right = col + offset + 1;
 
     if (
-      isOccupied(left, row, blocks, block.id) ||
-      isOccupied(right, row, blocks, block.id)
+      isOccupied(left, row, blocks, block.id, currentObstacles) ||
+      isOccupied(right, row, blocks, block.id, currentObstacles)
     ) break;
 
     targets.push({ col: left, row });
@@ -356,13 +368,41 @@ function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[]): GridCoo
   return targets;
 }
 
-export const GridDnDExample = () => {
+interface GridDnDExampleProps {
+  levelData?: LevelData | null;
+  onNextLevel?: () => void;
+  onReturnToMenu?: () => void;
+  hasNextLevel?: boolean;
+}
+
+export const GridDnDExample: React.FC<GridDnDExampleProps> = ({ levelData, onNextLevel, onReturnToMenu, hasNextLevel }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [cellSize, setCellSize] = useState<CellSize>({ width: 70, height: 70 });
-  const [ blocks, setBlocks ] = useState<Block[]>(initialBlocks);
-  const [ draggingId, setDraggingId ] = useState<string | null>(null);
-  const [ highlightedCells, setHighlightedCells ] = useState<GridCoord[]>([]);
-  const [ won, setWon ] = useState(false);
+     const [cellSize, setCellSize] = useState<CellSize>({ width: 70, height: 70 });
+     
+     // Используем переданный уровень или дефолтные значения
+     const currentTargetCells: TargetCell[] = defaultTargetCells
+     
+     const currentInitialBlocks: Block[] = useMemo(() =>
+       levelData ?
+         levelData.initialBlocks :
+         defaultInitialBlocks
+     , [levelData]);
+     
+     const currentObstacles: GridCoord[] = useMemo(() =>
+       levelData ?
+         levelData.obstacles :
+         defaultObstacles
+     , [levelData]);
+     
+     const [blocks, setBlocks] = useState<Block[]>(currentInitialBlocks);
+     
+        // Update blocks when level changes
+        useEffect(() => {
+          setBlocks(currentInitialBlocks);
+        }, [currentInitialBlocks]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [highlightedCells, setHighlightedCells] = useState<GridCoord[]>([]);
+  const [won, setWon] = useState(false);
 
   // Обновляем размеры ячейки при изменении размеров контейнера
   const updateCellSize = useCallback(() => {
@@ -408,32 +448,37 @@ export const GridDnDExample = () => {
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
 
   // Whenever blocks change, check win condition and update `won`
-  useEffect(() => {
-    if (checkWinCondition(blocks, targetCells)) {
-      setWon(true);
-    } else {
-      setWon(false);
-    }
-  }, [ blocks ]);
+       useEffect(() => {
+         if (checkWinCondition(blocks, currentTargetCells)) {
+           setWon(true);
+         } else {
+           setWon(false);
+         }
+       }, [blocks, currentTargetCells]);
+    
+      // Reset win state when level changes
+      useEffect(() => {
+        setWon(false);
+      }, [levelData]);
 
   function handleDragStart(event: DragStartEvent) {
     const block = blocks.find(b => b.id === event.active.id);
     if (!block) return;
-
+  
     setDraggingId(block.id);
-
+  
     if (block.type === 'standard') {
-      const validTargets = getValidJumpTargets(block.position, blocks);
+      const validTargets = getValidJumpTargets(block.position, blocks, currentObstacles);
       setHighlightedCells(validTargets);
     } else if (block.type === 'tall') {
-      const validTargets = getValidMoveTargetsForTallBlock(block, blocks);
+      const validTargets = getValidMoveTargetsForTallBlock(block, blocks, currentObstacles);
       const cellsToHighlight = validTargets.flatMap(({ col, row }) => [
         { col, row },
         { col, row: row + 1 }
       ]);
       setHighlightedCells(cellsToHighlight);
     } else if (block.type === 'wide') {
-      const validTargets = getValidMoveTargetsForWideBlock(block, blocks);
+      const validTargets = getValidMoveTargetsForWideBlock(block, blocks, currentObstacles);
       const cellsToHighlight = validTargets.flatMap(({ col, row }) => [
         { col, row },
         { col: col + 1, row }
@@ -455,7 +500,7 @@ export const GridDnDExample = () => {
       row: Math.min(Math.max(approxRow, 0), GRID_SIZE - 1)
     };
 
-    const newPos = computeNewPosition(block, targetPos, blocks);
+    const newPos = computeNewPosition(block, targetPos, blocks, currentObstacles);
 
     if (newPos.col !== block.position.col || newPos.row !== block.position.row) {
       const updatedBlocks = blocks.map(b =>
@@ -470,11 +515,11 @@ export const GridDnDExample = () => {
   }
 
   function resetGame() {
-    setBlocks(initialBlocks);
-    setWon(false);
-    setHighlightedCells([]);
-    setDraggingId(null);
-  }
+            setBlocks(currentInitialBlocks);
+            setWon(false);
+            setHighlightedCells([]);
+            setDraggingId(null);
+          }
 
   const cells = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => i);
 
@@ -499,9 +544,9 @@ export const GridDnDExample = () => {
           { cells.map((_, i) => {
             const col = i % GRID_SIZE;
             const row = Math.floor(i / GRID_SIZE);
-            const isObstacle = obstacles.some(o => o.col === col && o.row === row);
-            const isHighlighted = highlightedCells.some(c => c.col === col && c.row === row);
-            const isTargetCell = targetCells.some(t => t.position.col === col && t.position.row === row);
+            const isObstacle = currentObstacles.some(o => o.col === col && o.row === row);
+                        const isHighlighted = highlightedCells.some(c => c.col === col && c.row === row);
+                        const isTargetCell = currentTargetCells.some(t => t.position.col === col && t.position.row === row);
 
             return (
               <div
@@ -540,15 +585,28 @@ export const GridDnDExample = () => {
 
       {/* Win message overlay */ }
       { won && (
-        <div className='win-overlay'>
-          <span className={ 'win-icon' }>🎉</span>
-          <br />
-          Победа!
-          <button onClick={ resetGame } className='win-button' autoFocus>
-            Играть заново
-          </button>
-        </div>
-      ) }
+                     <div className='win-overlay'>
+                       <span className={ 'win-icon' }>🎉</span>
+                       <br />
+                       Победа!
+                       <button onClick={ resetGame } className='win-button'>
+                         Играть заново
+                       </button>
+                       {levelData && onReturnToMenu && (
+                                          <>
+                                            {hasNextLevel && onNextLevel ? (
+                                              <button onClick={ onNextLevel } className='win-button next-level'>
+                                                Следующий уровень
+                                              </button>
+                                            ) : (
+                                              <button onClick={ onReturnToMenu } className='win-button'>
+                                                Вернуться на главную
+                                              </button>
+                                            )}
+                                          </>
+                                        )}
+                     </div>
+                   ) }
     </div>
   );
 };
