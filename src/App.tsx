@@ -72,10 +72,13 @@ export const App = () => {
         <LevelSelection onSelectLevel={handleLevelSelect} onBack={handleBackToMenu} />
       )}
       {currentView === 'game' && (
-        <>
+        <div style={ { display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', rowGap: '20px' } }>
+          {selectedLevel && (
+            <h2 style={ { margin: '0 0 10px 0' } }>Уровень {selectedLevel.id}</h2>
+          )}
           <GridDnDExample levelData={selectedLevel} onNextLevel={handleNextLevel} onReturnToMenu={() => setCurrentView('mainMenu')} hasNextLevel={levels ? hasNextLevel() : false} />
-          <button onClick={ handleBackToLevelSelection } style={ { marginTop: '40px' } }>Назад</button>
-        </>
+          <button onClick={ handleBackToLevelSelection }>🏠</button>
+        </div>
       )}
     </div>
   )
