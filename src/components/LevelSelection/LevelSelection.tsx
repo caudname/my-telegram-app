@@ -6,9 +6,10 @@ import { type LevelData } from '../GridDnDExample/GridDnDExample';
 interface LevelSelectionProps {
   onSelectLevel: (level: LevelData) => void;
   onBack: () => void;
+  completedLevels?: number[];
 }
 
-const LevelSelection: React.FC<LevelSelectionProps> = ({ onSelectLevel, onBack }) => {
+const LevelSelection: React.FC<LevelSelectionProps> = ({ onSelectLevel, onBack, completedLevels = [] }) => {
   const levels = levelsData as LevelData[];
 
   return (
@@ -24,16 +25,20 @@ const LevelSelection: React.FC<LevelSelectionProps> = ({ onSelectLevel, onBack }
         <h1 className="level-selection-title">Выберите уровень</h1>
       </div>
       <div className="levels-grid">
-        {levels.map((level) => (
-          <button
-            key={level.id}
-            className="level-button"
-            onClick={() => onSelectLevel(level)}
-            aria-label={`Уровень ${level.id}`}
-          >
-            {level.id}
-          </button>
-        ))}
+        {levels.map((level) => {
+          const isCompleted = completedLevels.includes(level.id);
+          return (
+            <button
+              key={level.id}
+              className={`level-button ${isCompleted ? 'completed' : ''}`}
+              onClick={() => onSelectLevel(level)}
+              aria-label={`Уровень ${level.id} ${isCompleted ? '(пройден)' : ''}`}
+            >
+              {level.id}
+              {isCompleted && <span className="completed-icon">✓</span>}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

@@ -18,6 +18,10 @@ export const App = () => {
   const [showRestartConfirmation, setShowRestartConfirmation] = useState(false);
   const [currentView, setCurrentView] = useState<'mainMenu' | 'levelSelection' | 'game'>('mainMenu');
   const [selectedLevel, setSelectedLevel] = useState<LevelData | null>(null);
+  const [completedLevels, setCompletedLevels] = useState<number[]>(() => {
+    const saved = localStorage.getItem('completedLevels');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   useEffect(() => {
     WebApp.ready(); // Говорим Telegram, что приложение загружено
@@ -65,6 +69,14 @@ export const App = () => {
     setCurrentView('mainMenu');
   };
 
+  const markLevelAsCompleted = (levelId: number) => {
+    if (!completedLevels.includes(levelId)) {
+      const newCompletedLevels = [...completedLevels, levelId];
+      setCompletedLevels(newCompletedLevels);
+      localStorage.setItem('completedLevels', JSON.stringify(newCompletedLevels));
+    }
+  };
+
   const handleExit = () => {
     WebApp.close();
   };
@@ -75,14 +87,14 @@ export const App = () => {
         <MainMenu onSelectLevel={handleSelectLevel} onExit={handleExit} />
       )}
       {currentView === 'levelSelection' && (
-        <LevelSelection onSelectLevel={handleLevelSelect} onBack={handleBackToMenu} />
+        <LevelSelection onSelectLevel={handleLevelSelect} onBack={handleBackToMenu} completedLevels={completedLevels} />
       )}
       {currentView === 'game' && (
         <div style={ { display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', rowGap: '20px' } }>
           {selectedLevel && (
             <h2 style={ { margin: '0 0 10px 0' } }>Уровень {selectedLevel.id}</h2>
           )}
-          <GridDnDExample ref={ (gridRef) => { window.resetGridLevel = gridRef?.resetLevel } } levelData={selectedLevel} onNextLevel={handleNextLevel} onReturnToMenu={() => setCurrentView('mainMenu')} hasNextLevel={levels ? hasNextLevel() : false} />
+          <GridDnDExample ref={ (gridRef) => { window.resetGridLevel = gridRef?.resetLevel } } levelData={selectedLevel} onNextLevel={handleNextLevel} onReturnToMenu={() => setCurrentView('mainMenu')} hasNextLevel={levels ? hasNextLevel() : false} onLevelComplete={selectedLevel ? () => markLevelAsCompleted(selectedLevel.id) : undefined} />
           <div style={ { display: 'flex', gap: '10px' } }>
             <button onClick={() => setShowHomeConfirmation(true)}>🏠</button>
             <button onClick={() => setShowRestartConfirmation(true)}>🔄</button>

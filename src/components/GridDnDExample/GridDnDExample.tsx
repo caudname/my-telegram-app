@@ -419,12 +419,13 @@ export interface GridDnDExampleProps {
   onNextLevel?: () => void;
   onReturnToMenu?: () => void;
   hasNextLevel?: boolean;
+  onLevelComplete?: () => void;
 }
 
 export const GridDnDExample: React.ForwardRefRenderFunction<
   { resetLevel: () => void },
   GridDnDExampleProps
-> = ({ levelData, onNextLevel, onReturnToMenu, hasNextLevel }, ref) => {
+> = ({ levelData, onNextLevel, onReturnToMenu, hasNextLevel, onLevelComplete }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [cellSize, setCellSize] = useState<CellSize>({ width: 70, height: 70 });
 
@@ -511,11 +512,18 @@ export const GridDnDExample: React.ForwardRefRenderFunction<
   // Whenever blocks change, check win condition and update `won`
   useEffect(() => {
     if (checkWinCondition(blocks, currentTargetCells)) {
-      setWon(true);
+      if (!won) { // Only trigger once when winning
+        setWon(true);
+        if (onLevelComplete) {
+          onLevelComplete();
+        }
+      }
     } else {
-      setWon(false);
+      if (won) { // Reset win state if no longer won
+        setWon(false);
+      }
     }
-  }, [blocks, currentTargetCells]);
+  }, [blocks, currentTargetCells, won, onLevelComplete]);
 
   // Reset win state when level changes
   useEffect(() => {

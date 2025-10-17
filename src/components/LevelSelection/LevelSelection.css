@@ -87,3 +87,53 @@
   outline: 2px solid #0056b3;
   outline-offset: 2px;
 }
+
+.level-button.completed {
+  background-color: #28a745; /* Green color for completed levels */
+  position: relative;
+}
+
+.level-button.completed:hover {
+  background-color: #218838;
+}
+
+.completed-icon {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #ffc107;
+  color: #000;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #000;
+}
+
+.level-button.completed {
+  background-color: #28a745; /* Green color for completed levels */
+  position: relative;
+}
+
+.level-button.completed:hover {
+  background-color: #218838;
+}
+
+.completed-icon {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #ffc107;
+  color: #000;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #000;
+}
