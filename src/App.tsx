@@ -5,7 +5,16 @@ import MainMenu from './components/MainMenu/MainMenu';
 import LevelSelection from './components/LevelSelection/LevelSelection';
 import './App.css'
 
+// Extend the Window interface to include our custom resetGridLevel property
+declare global {
+  interface Window {
+    resetGridLevel?: () => void;
+  }
+}
+
 export const App = () => {
+  const [showHomeConfirmation, setShowHomeConfirmation] = useState(false);
+  const [showRestartConfirmation, setShowRestartConfirmation] = useState(false);
   const [currentView, setCurrentView] = useState<'mainMenu' | 'levelSelection' | 'game'>('mainMenu');
   const [selectedLevel, setSelectedLevel] = useState<LevelData | null>(null);
 
@@ -72,15 +81,54 @@ export const App = () => {
           {selectedLevel && (
             <h2 style={ { margin: '0 0 10px 0' } }>Уровень {selectedLevel.id}</h2>
           )}
-          <GridDnDExample ref={ (gridRef) => { (window as any).resetGridLevel = gridRef?.resetLevel } } levelData={selectedLevel} onNextLevel={handleNextLevel} onReturnToMenu={() => setCurrentView('mainMenu')} hasNextLevel={levels ? hasNextLevel() : false} />
+          <GridDnDExample ref={ (gridRef) => { window.resetGridLevel = gridRef?.resetLevel } } levelData={selectedLevel} onNextLevel={handleNextLevel} onReturnToMenu={() => setCurrentView('mainMenu')} hasNextLevel={levels ? hasNextLevel() : false} />
           <div style={ { display: 'flex', gap: '10px' } }>
-            <button onClick={ handleBackToMenu }>🏠</button>
-            <button onClick={ () => {
-              // Рестарт уровня - сброс до начального состояния
-              if (typeof (window as any).resetGridLevel === 'function') {
-                (window as any).resetGridLevel();
-              }
-            } }>🔄</button>
+            <button onClick={() => setShowHomeConfirmation(true)}>🏠</button>
+            <button onClick={() => setShowRestartConfirmation(true)}>🔄</button>
+          </div>
+        </div>
+      )}
+      {/* Модальное окно подтверждения возврата на главную */}
+      {showHomeConfirmation && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Подтверждение</h3>
+            <p>Вы уверены, что хотите вернуться на главную?</p>
+            <div className="modal-buttons">
+              <button onClick={() => {
+                handleBackToMenu();
+                setShowHomeConfirmation(false);
+              }} className="win-button">
+                Да
+              </button>
+              <button onClick={() => setShowHomeConfirmation(false)} className="win-button">
+                Нет
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Модальное окно подтверждения рестарта игры */}
+      {showRestartConfirmation && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Подтверждение</h3>
+            <p>Вы уверены, что хотите начать заново?</p>
+            <div className="modal-buttons">
+              <button onClick={() => {
+                // Рестарт уровня - сброс до начального состояния
+                const resetFunction = window.resetGridLevel;
+                if (typeof resetFunction === 'function') {
+                  resetFunction();
+                }
+                setShowRestartConfirmation(false);
+              }} className="win-button">
+                Да
+              </button>
+              <button onClick={() => setShowRestartConfirmation(false)} className="win-button">
+                Нет
+              </button>
+            </div>
           </div>
         </div>
       )}

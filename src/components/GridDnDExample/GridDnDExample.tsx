@@ -1,4 +1,11 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo, useImperativeHandle } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useImperativeHandle,
+} from "react";
 import {
   DndContext,
   useDraggable,
@@ -6,9 +13,10 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
-  type DragEndEvent, type DragStartEvent
-} from '@dnd-kit/core';
-import './GridDnDExample.css';
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import "./GridDnDExample.css";
 
 type TargetCell = {
   id: string; // должен соответствовать id блока
@@ -16,7 +24,7 @@ type TargetCell = {
 };
 
 type GridCoord = { col: number; row: number };
-type BlockType = 'standard' | 'tall' | 'wide';
+type BlockType = "standard" | "tall" | "wide";
 
 type Block = {
   id: string;
@@ -38,47 +46,53 @@ export interface LevelData {
 const GRID_SIZE = 5;
 
 const defaultTargetCells: TargetCell[] = [
-  { id: 'A', position: { col: 0, row: 0 } },
-  { id: 'B', position: { col: 2, row: 2 } },
-  { id: 'C', position: { col: 0, row: 4 } },
-  { id: 'D', position: { col: 4, row: 0 } },
-  { id: 'E', position: { col: 4, row: 4 } }
+  { id: "A", position: { col: 0, row: 0 } },
+  { id: "B", position: { col: 2, row: 2 } },
+  { id: "C", position: { col: 0, row: 4 } },
+  { id: "D", position: { col: 4, row: 0 } },
+  { id: "E", position: { col: 4, row: 4 } },
 ];
 
 const defaultInitialBlocks: Block[] = [
-  { id: 'A', position: { col: 2, row: 4 }, type: 'standard' },
-  { id: 'C', position: { col: 4, row: 2 }, type: 'standard' },
-  { id: 'D', position: { col: 3, row: 0 }, type: 'tall' }
+  { id: "A", position: { col: 2, row: 4 }, type: "standard" },
+  { id: "C", position: { col: 4, row: 2 }, type: "standard" },
+  { id: "D", position: { col: 3, row: 0 }, type: "tall" },
   // { id: 'E', position: { col: 0, row: 0 }, type: 'wide' }
 ];
 
 const defaultObstacles: GridCoord[] = [
   { col: 0, row: 1 },
   { col: 1, row: 2 },
-  { col: 2, row: 3 }
+  { col: 2, row: 3 },
 ];
 
 function checkWinCondition(blocks: Block[], targets: TargetCell[]): boolean {
-  const standardBlocks = blocks.filter(b => b.type === 'standard');
+  const standardBlocks = blocks.filter((b) => b.type === "standard");
 
-  return standardBlocks.every(block =>
-    targets.some(target =>
-      getOccupiedCells(block).some(cell =>
-        cell.col === target.position.col &&
-        cell.row === target.position.row
+  return standardBlocks.every((block) =>
+    targets.some((target) =>
+      getOccupiedCells(block).some(
+        (cell) =>
+          cell.col === target.position.col && cell.row === target.position.row
       )
     )
   );
 }
 
-function isOccupied(col: number, row: number, blocks: Block[], ignoreId?: string, currentObstacles: GridCoord[] = defaultObstacles): boolean {
+function isOccupied(
+  col: number,
+  row: number,
+  blocks: Block[],
+  ignoreId?: string,
+  currentObstacles: GridCoord[] = defaultObstacles
+): boolean {
   if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return true;
-  if (currentObstacles.some(o => o.col === col && o.row === row)) return true;
+  if (currentObstacles.some((o) => o.col === col && o.row === row)) return true;
 
   for (const block of blocks) {
     if (block.id === ignoreId) continue;
     const occupiedCells = getOccupiedCells(block);
-    if (occupiedCells.some(c => c.col === col && c.row === row)) {
+    if (occupiedCells.some((c) => c.col === col && c.row === row)) {
       return true;
     }
   }
@@ -89,18 +103,18 @@ function isOccupied(col: number, row: number, blocks: Block[], ignoreId?: string
 function getOccupiedCells(block: Block): GridCoord[] {
   const { col, row } = block.position;
   switch (block.type) {
-    case 'tall':
+    case "tall":
       return [
         { col, row },
-        { col, row: row + 1 }
+        { col, row: row + 1 },
       ];
-    case 'wide':
+    case "wide":
       return [
         { col, row },
-        { col: col + 1, row }
+        { col: col + 1, row },
       ];
     default:
-      return [ { col, row } ];
+      return [{ col, row }];
   }
 }
 
@@ -118,52 +132,55 @@ interface DraggableBlockProps {
 function DraggableBlock({ block, draggingId, cellSize }: DraggableBlockProps) {
   const { attributes, listeners, setNodeRef } = useDraggable({ id: block.id });
 
-  const width = block.type === 'wide' ? cellSize.width * 2 : cellSize.width;
-  const height = block.type === 'tall' ? cellSize.height * 2 : cellSize.height;
+  const width = block.type === "wide" ? cellSize.width * 2 : cellSize.width;
+  const height = block.type === "tall" ? cellSize.height * 2 : cellSize.height;
   const isBeingDragged = draggingId === block.id;
 
   const style: React.CSSProperties = {
-    position: 'absolute',
+    position: "absolute",
     width,
     height,
-    transform: `translate3d(${ block.position.col * cellSize.width }px, ${ block.position.row * cellSize.height }px, 0)`,
-    transition: isBeingDragged ? 'none' : 'transform 300ms ease',
-    zIndex: isBeingDragged ? 1000 : 'auto',
-    backgroundColor: block.type === 'tall' || block.type === 'wide' ? '#E67E22' : '#3498DB',
-    color: 'white',
-    fontWeight: 'bold',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+    transform: `translate3d(${block.position.col * cellSize.width}px, ${
+      block.position.row * cellSize.height
+    }px, 0)`,
+    transition: isBeingDragged ? "none" : "transform 300ms ease",
+    zIndex: isBeingDragged ? 1000 : "auto",
+    backgroundColor:
+      block.type === "tall" || block.type === "wide" ? "#E67E22" : "#3498DB",
+    color: "white",
+    fontWeight: "bold",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: 6,
-    cursor: 'grab',
-    userSelect: 'none',
-    pointerEvents: 'auto',
-    touchAction: 'none'
+    cursor: "grab",
+    userSelect: "none",
+    pointerEvents: "auto",
+    touchAction: "none",
   };
 
   return (
     <div
-      ref={ setNodeRef }
-      { ...listeners }
-      { ...attributes }
-      style={ style }
-      draggable={ false } // предотвращает HTML5 drag
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      style={style}
+      draggable={false} // предотвращает HTML5 drag
     >
-      { block.id }
+      {block.id}
     </div>
   );
 }
 
 function computeNewPosition(
- block: Block,
+  block: Block,
   to: GridCoord,
   blocks: Block[],
   currentObstacles: GridCoord[] = defaultObstacles
 ): GridCoord {
   const from = block.position;
 
-  if (block.type === 'standard') {
+  if (block.type === "standard") {
     const dCol = to.col - from.col;
     const dRow = to.row - from.row;
 
@@ -185,7 +202,7 @@ function computeNewPosition(
       currentRow >= 0 &&
       currentRow < GRID_SIZE &&
       isOccupied(currentCol, currentRow, blocks, undefined, currentObstacles)
-      ) {
+    ) {
       currentCol += dirCol;
       currentRow += dirRow;
       jumped = true;
@@ -200,14 +217,17 @@ function computeNewPosition(
       return from;
     }
 
-    if (jumped && !isOccupied(currentCol, currentRow, blocks, undefined, currentObstacles)) {
+    if (
+      jumped &&
+      !isOccupied(currentCol, currentRow, blocks, undefined, currentObstacles)
+    ) {
       return { col: currentCol, row: currentRow };
     }
 
     return from;
   }
 
-  if (block.type === 'tall') {
+  if (block.type === "tall") {
     // Только вертикальные перемещения
     if (to.col !== from.col) return from;
 
@@ -220,7 +240,7 @@ function computeNewPosition(
       nextRow + 1 < GRID_SIZE &&
       !isOccupied(from.col, nextRow, blocks, block.id, currentObstacles) &&
       !isOccupied(from.col, nextRow + 1, blocks, block.id, currentObstacles)
-      ) {
+    ) {
       if (nextRow === to.row) {
         return { col: from.col, row: nextRow };
       }
@@ -228,12 +248,16 @@ function computeNewPosition(
     }
 
     // Если точно не попали — вернём ближайшую допустимую позицию
-    const validTargets = getValidMoveTargetsForTallBlock(block, blocks, currentObstacles);
-    const nearest = validTargets.find(t => t.row === to.row);
+    const validTargets = getValidMoveTargetsForTallBlock(
+      block,
+      blocks,
+      currentObstacles
+    );
+    const nearest = validTargets.find((t) => t.row === to.row);
     return nearest || from;
   }
 
-  if (block.type === 'wide') {
+  if (block.type === "wide") {
     // Только горизонтальные перемещения
     if (to.row !== from.row) return from;
 
@@ -246,7 +270,7 @@ function computeNewPosition(
       nextCol + 1 < GRID_SIZE &&
       !isOccupied(nextCol, from.row, blocks, block.id, currentObstacles) &&
       !isOccupied(nextCol + 1, from.row, blocks, block.id, currentObstacles)
-      ) {
+    ) {
       if (nextCol === to.col) {
         return { col: nextCol, row: from.row };
       }
@@ -254,20 +278,28 @@ function computeNewPosition(
     }
 
     // Найти ближайшую допустимую
-    const validTargets = getValidMoveTargetsForWideBlock(block, blocks, currentObstacles);
-    const nearest = validTargets.find(t => t.col === to.col);
+    const validTargets = getValidMoveTargetsForWideBlock(
+      block,
+      blocks,
+      currentObstacles
+    );
+    const nearest = validTargets.find((t) => t.col === to.col);
     return nearest || from;
   }
 
   return from;
 }
 
-function getValidJumpTargets(from: GridCoord, blocks: Block[], currentObstacles: GridCoord[] = defaultObstacles): GridCoord[] {
+function getValidJumpTargets(
+  from: GridCoord,
+  blocks: Block[],
+  currentObstacles: GridCoord[] = defaultObstacles
+): GridCoord[] {
   const directions = [
     { dc: 0, dr: -1 }, // вверх
-    { dc: 1, dr: 0 },  // вправо
-    { dc: 0, dr: 1 },  // вниз
-    { dc: -1, dr: 0 } // влево
+    { dc: 1, dr: 0 }, // вправо
+    { dc: 0, dr: 1 }, // вниз
+    { dc: -1, dr: 0 }, // влево
   ];
 
   const targets: GridCoord[] = [];
@@ -291,8 +323,10 @@ function getValidJumpTargets(from: GridCoord, blocks: Block[], currentObstacles:
     // Если прыгали и нашли свободную клетку — запоминаем
     if (
       jumped &&
-      col >= 0 && col < GRID_SIZE &&
-      row >= 0 && row < GRID_SIZE &&
+      col >= 0 &&
+      col < GRID_SIZE &&
+      row >= 0 &&
+      row < GRID_SIZE &&
       !isOccupied(col, row, blocks, undefined, currentObstacles)
     ) {
       targets.push({ col, row });
@@ -302,7 +336,11 @@ function getValidJumpTargets(from: GridCoord, blocks: Block[], currentObstacles:
   return targets;
 }
 
-function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[], currentObstacles: GridCoord[] = defaultObstacles): GridCoord[] {
+function getValidMoveTargetsForTallBlock(
+  block: Block,
+  blocks: Block[],
+  currentObstacles: GridCoord[] = defaultObstacles
+): GridCoord[] {
   const targets: GridCoord[] = [];
   const { col, row } = block.position;
 
@@ -314,7 +352,8 @@ function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[], currentO
     if (
       isOccupied(col, upper, blocks, block.id, currentObstacles) ||
       isOccupied(col, lower, blocks, block.id, currentObstacles)
-    ) break;
+    )
+      break;
 
     targets.push({ col, row: upper });
   }
@@ -327,7 +366,8 @@ function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[], currentO
     if (
       isOccupied(col, upper, blocks, block.id, currentObstacles) ||
       isOccupied(col, lower, blocks, block.id, currentObstacles)
-    ) break;
+    )
+      break;
 
     targets.push({ col, row: upper });
   }
@@ -335,7 +375,11 @@ function getValidMoveTargetsForTallBlock(block: Block, blocks: Block[], currentO
   return targets;
 }
 
-function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[], currentObstacles: GridCoord[] = defaultObstacles): GridCoord[] {
+function getValidMoveTargetsForWideBlock(
+  block: Block,
+  blocks: Block[],
+  currentObstacles: GridCoord[] = defaultObstacles
+): GridCoord[] {
   const targets: GridCoord[] = [];
   const { col, row } = block.position;
 
@@ -347,7 +391,8 @@ function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[], currentO
     if (
       isOccupied(left, row, blocks, block.id, currentObstacles) ||
       isOccupied(right, row, blocks, block.id, currentObstacles)
-    ) break;
+    )
+      break;
 
     targets.push({ col: left, row });
   }
@@ -360,7 +405,8 @@ function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[], currentO
     if (
       isOccupied(left, row, blocks, block.id, currentObstacles) ||
       isOccupied(right, row, blocks, block.id, currentObstacles)
-    ) break;
+    )
+      break;
 
     targets.push({ col: left, row });
   }
@@ -370,66 +416,67 @@ function getValidMoveTargetsForWideBlock(block: Block, blocks: Block[], currentO
 
 export interface GridDnDExampleProps {
   levelData?: LevelData | null;
- onNextLevel?: () => void;
+  onNextLevel?: () => void;
   onReturnToMenu?: () => void;
   hasNextLevel?: boolean;
 }
 
-export const GridDnDExample: React.ForwardRefRenderFunction<{ resetLevel: () => void }, GridDnDExampleProps> = ({ levelData, onNextLevel, onReturnToMenu, hasNextLevel }, ref) => {
- const containerRef = useRef<HTMLDivElement>(null);
-     const [cellSize, setCellSize] = useState<CellSize>({ width: 70, height: 70 });
-     
-     // Используем переданный уровень или дефолтные значения
-     const currentTargetCells: TargetCell[] = defaultTargetCells
-     
-     const currentInitialBlocks: Block[] = useMemo(() =>
-       levelData ?
-         levelData.initialBlocks :
-         defaultInitialBlocks
-     , [levelData]);
-     
-     const currentObstacles: GridCoord[] = useMemo(() =>
-       levelData ?
-         levelData.obstacles :
-         defaultObstacles
-     , [levelData]);
-     
-     const [blocks, setBlocks] = useState<Block[]>(currentInitialBlocks);
-     
-        // Update blocks when level changes
-        useEffect(() => {
-          setBlocks(currentInitialBlocks);
-        }, [currentInitialBlocks]);
-        
-        // Добавляем функцию для сброса уровня
-        const resetLevel = () => {
-          setBlocks(currentInitialBlocks);
-          setWon(false);
-          setHighlightedCells([]);
-          setDraggingId(null);
-        };
-        
-        // Экспортируем функцию resetLevel через ref, чтобы родительский компонент мог вызвать её
-        useImperativeHandle(ref, () => ({
-          resetLevel
-        }));
-        
-   const [draggingId, setDraggingId] = useState<string | null>(null);
-   const [highlightedCells, setHighlightedCells] = useState<GridCoord[]>([]);
-   const [won, setWon] = useState(false);
+export const GridDnDExample: React.ForwardRefRenderFunction<
+  { resetLevel: () => void },
+  GridDnDExampleProps
+> = ({ levelData, onNextLevel, onReturnToMenu, hasNextLevel }, ref) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [cellSize, setCellSize] = useState<CellSize>({ width: 70, height: 70 });
+
+  // Используем переданный уровень или дефолтные значения
+  const currentTargetCells: TargetCell[] = defaultTargetCells;
+
+  const currentInitialBlocks: Block[] = useMemo(
+    () => (levelData ? levelData.initialBlocks : defaultInitialBlocks),
+    [levelData]
+  );
+
+  const currentObstacles: GridCoord[] = useMemo(
+    () => (levelData ? levelData.obstacles : defaultObstacles),
+    [levelData]
+  );
+
+  const [blocks, setBlocks] = useState<Block[]>(currentInitialBlocks);
+
+  // Update blocks when level changes
+  useEffect(() => {
+    setBlocks(currentInitialBlocks);
+  }, [currentInitialBlocks]);
+
+  // Добавляем функцию для сброса уровня
+  const resetLevel = () => {
+    setBlocks(currentInitialBlocks);
+    setWon(false);
+    setHighlightedCells([]);
+    setDraggingId(null);
+  };
+
+  // Экспортируем функцию resetLevel через ref, чтобы родительский компонент мог вызвать её
+  useImperativeHandle(ref, () => ({
+    resetLevel,
+  }));
+
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [highlightedCells, setHighlightedCells] = useState<GridCoord[]>([]);
+  const [won, setWon] = useState(false);
 
   // Обновляем размеры ячейки при изменении размеров контейнера
   const updateCellSize = useCallback(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.offsetWidth;
       const containerHeight = containerRef.current.offsetHeight;
-      
+
       // Размер ячейки как 1/5 от ширины и высоты контейнера
       const newCellSize = {
         width: containerWidth / GRID_SIZE,
-        height: containerHeight / GRID_SIZE
+        height: containerHeight / GRID_SIZE,
       };
-      
+
       setCellSize(newCellSize);
     }
   }, []);
@@ -437,24 +484,24 @@ export const GridDnDExample: React.ForwardRefRenderFunction<{ resetLevel: () => 
   // Обновляем размеры при монтировании изменении размеров окна
   useEffect(() => {
     updateCellSize();
-    
+
     const handleResize = () => {
       updateCellSize();
     };
-    
-    window.addEventListener('resize', handleResize);
-    
+
+    window.addEventListener("resize", handleResize);
+
     // Также добавим ResizeObserver для отслеживания изменений размера контейнера
     const resizeObserver = new ResizeObserver(() => {
       updateCellSize();
     });
-    
+
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
-    
+
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
       resizeObserver.disconnect();
     };
   }, [updateCellSize, containerRef]);
@@ -462,40 +509,52 @@ export const GridDnDExample: React.ForwardRefRenderFunction<{ resetLevel: () => 
   const sensors = useSensors(useSensor(MouseSensor), useSensor(TouchSensor));
 
   // Whenever blocks change, check win condition and update `won`
-       useEffect(() => {
-         if (checkWinCondition(blocks, currentTargetCells)) {
-           setWon(true);
-         } else {
-           setWon(false);
-         }
-       }, [blocks, currentTargetCells]);
-    
-      // Reset win state when level changes
-      useEffect(() => {
-        setWon(false);
-      }, [levelData]);
+  useEffect(() => {
+    if (checkWinCondition(blocks, currentTargetCells)) {
+      setWon(true);
+    } else {
+      setWon(false);
+    }
+  }, [blocks, currentTargetCells]);
+
+  // Reset win state when level changes
+  useEffect(() => {
+    setWon(false);
+  }, [levelData]);
 
   function handleDragStart(event: DragStartEvent) {
-    const block = blocks.find(b => b.id === event.active.id);
+    const block = blocks.find((b) => b.id === event.active.id);
     if (!block) return;
-  
+
     setDraggingId(block.id);
-  
-    if (block.type === 'standard') {
-      const validTargets = getValidJumpTargets(block.position, blocks, currentObstacles);
+
+    if (block.type === "standard") {
+      const validTargets = getValidJumpTargets(
+        block.position,
+        blocks,
+        currentObstacles
+      );
       setHighlightedCells(validTargets);
-    } else if (block.type === 'tall') {
-      const validTargets = getValidMoveTargetsForTallBlock(block, blocks, currentObstacles);
+    } else if (block.type === "tall") {
+      const validTargets = getValidMoveTargetsForTallBlock(
+        block,
+        blocks,
+        currentObstacles
+      );
       const cellsToHighlight = validTargets.flatMap(({ col, row }) => [
         { col, row },
-        { col, row: row + 1 }
+        { col, row: row + 1 },
       ]);
       setHighlightedCells(cellsToHighlight);
-    } else if (block.type === 'wide') {
-      const validTargets = getValidMoveTargetsForWideBlock(block, blocks, currentObstacles);
+    } else if (block.type === "wide") {
+      const validTargets = getValidMoveTargetsForWideBlock(
+        block,
+        blocks,
+        currentObstacles
+      );
       const cellsToHighlight = validTargets.flatMap(({ col, row }) => [
         { col, row },
-        { col: col + 1, row }
+        { col: col + 1, row },
       ]);
       setHighlightedCells(cellsToHighlight);
     }
@@ -503,21 +562,30 @@ export const GridDnDExample: React.ForwardRefRenderFunction<{ resetLevel: () => 
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, delta } = event;
-    const block = blocks.find(b => b.id === active.id);
+    const block = blocks.find((b) => b.id === active.id);
     if (!block) return;
 
     const approxCol = block.position.col + Math.round(delta.x / cellSize.width);
-    const approxRow = block.position.row + Math.round(delta.y / cellSize.height);
+    const approxRow =
+      block.position.row + Math.round(delta.y / cellSize.height);
 
     const targetPos = {
       col: Math.min(Math.max(approxCol, 0), GRID_SIZE - 1),
-      row: Math.min(Math.max(approxRow, 0), GRID_SIZE - 1)
+      row: Math.min(Math.max(approxRow, 0), GRID_SIZE - 1),
     };
 
-    const newPos = computeNewPosition(block, targetPos, blocks, currentObstacles);
+    const newPos = computeNewPosition(
+      block,
+      targetPos,
+      blocks,
+      currentObstacles
+    );
 
-    if (newPos.col !== block.position.col || newPos.row !== block.position.row) {
-      const updatedBlocks = blocks.map(b =>
+    if (
+      newPos.col !== block.position.col ||
+      newPos.row !== block.position.row
+    ) {
+      const updatedBlocks = blocks.map((b) =>
         b.id === block.id ? { ...b, position: newPos } : b
       );
 
@@ -529,98 +597,117 @@ export const GridDnDExample: React.ForwardRefRenderFunction<{ resetLevel: () => 
   }
 
   function resetGame() {
-            setBlocks(currentInitialBlocks);
-            setWon(false);
-            setHighlightedCells([]);
-            setDraggingId(null);
-          }
+    setBlocks(currentInitialBlocks);
+    setWon(false);
+    setHighlightedCells([]);
+    setDraggingId(null);
+  }
 
   const cells = Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, i) => i);
 
   return (
-    <div className='container' ref={containerRef}>
+    <div className="container" ref={containerRef}>
       <DndContext
-        sensors={ sensors }
-        onDragStart={ handleDragStart }
-        onDragEnd={ handleDragEnd }
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
       >
         <div
-          className='grid'
-          style={ {
-            position: 'relative',
-            width: '100%',
+          className="grid"
+          style={{
+            position: "relative",
+            width: "100%",
             height: cellSize.width * GRID_SIZE, // Используем width для квадратной сетки
-            display: 'grid',
-            gridTemplateColumns: `repeat(${ GRID_SIZE }, 1fr)`,
-            gridTemplateRows: `repeat(${ GRID_SIZE }, 1fr)`,
-          } }
+            display: "grid",
+            gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
+            gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)`,
+          }}
         >
-          { cells.map((_, i) => {
+          {cells.map((_, i) => {
             const col = i % GRID_SIZE;
             const row = Math.floor(i / GRID_SIZE);
-            const isObstacle = currentObstacles.some(o => o.col === col && o.row === row);
-                        const isHighlighted = highlightedCells.some(c => c.col === col && c.row === row);
-                        const isTargetCell = currentTargetCells.some(t => t.position.col === col && t.position.row === row);
+            const isObstacle = currentObstacles.some(
+              (o) => o.col === col && o.row === row
+            );
+            const isHighlighted = highlightedCells.some(
+              (c) => c.col === col && c.row === row
+            );
+            const isTargetCell = currentTargetCells.some(
+              (t) => t.position.col === col && t.position.row === row
+            );
 
             return (
               <div
-                key={ i }
-                className={ `cell ${ isHighlighted ? 'highlighted' : '' }` }
-                style={ {
-                  border: isTargetCell ? '1px dashed #FACC15' : '1px solid #ddd',
+                key={i}
+                className={`cell ${isHighlighted ? "highlighted" : ""}`}
+                style={{
+                  border: isTargetCell
+                    ? "1px dashed #FACC15"
+                    : "1px solid #ddd",
                   backgroundColor: isObstacle
-                    ? '#888888'
+                    ? "#888888"
                     : isHighlighted
-                      ? '#A3E635'
-                      : isTargetCell
-                        ? '#FACC15' // жёлтый
-                        : 'transparent'
-                } }
+                    ? "#A3E635"
+                    : isTargetCell
+                    ? "#FACC15" // жёлтый
+                    : "transparent",
+                }}
               >
-                { isTargetCell && (
+                {isTargetCell && (
                   <div
-                    style={ {
+                    style={{
                       fontSize: 18,
-                      position: 'absolute',
-                      pointerEvents: 'none'
-                    } }
+                      position: "absolute",
+                      pointerEvents: "none",
+                    }}
                   >
                     🎯
                   </div>
-                ) }
+                )}
               </div>
             );
-          }) }
-          { blocks.map(block => (
-            <DraggableBlock key={ block.id } block={ block } draggingId={ draggingId } cellSize={cellSize} />
-          )) }
+          })}
+          {blocks.map((block) => (
+            <DraggableBlock
+              key={block.id}
+              block={block}
+              draggingId={draggingId}
+              cellSize={cellSize}
+            />
+          ))}
         </div>
       </DndContext>
 
-      {/* Win message overlay */ }
-      { won && (
-                     <div className='win-overlay'>
-                       <span className={ 'win-icon' }>🎉</span>
-                       <br />
-                       Победа!
-                       <button onClick={ resetGame } className='win-button'>
-                         Играть заново
-                       </button>
-                       {levelData && onReturnToMenu && (
-                                          <>
-                                            {hasNextLevel && onNextLevel ? (
-                                              <button onClick={ onNextLevel } className='win-button next-level'>
-                                                Следующий уровень
-                                              </button>
-                                            ) : (
-                                              <button onClick={ onReturnToMenu } className='win-button'>
-                                                Вернуться на главную
-                                              </button>
-                                            )}
-                                          </>
-                                        )}
-                     </div>
-                   ) }
+      {/* Win message overlay */}
+      {won && (
+        <div className="win-overlay">
+          <span className={"win-icon"}>🎉</span>
+          <br />
+          Победа!
+          <button
+            onClick={resetGame}
+            className="win-button"
+          >
+            Играть заново
+          </button>
+          {levelData && onReturnToMenu && (
+            <>
+              {hasNextLevel && onNextLevel ? (
+                <button onClick={onNextLevel} className="win-button next-level">
+                  Следующий уровень
+                </button>
+              ) : (
+                <button
+                  onClick={onReturnToMenu}
+                  className="win-button"
+                >
+                  Вернуться на главную
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
