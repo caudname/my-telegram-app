@@ -3,6 +3,7 @@ import WebApp from '@twa-dev/sdk'
 import { GridDnDExample, type LevelData } from './components/GridDnDExample'
 import MainMenu from './components/MainMenu/MainMenu';
 import LevelSelection from './components/LevelSelection/LevelSelection';
+import { Modal } from './components/Modal';
 import './App.css'
 
 // Extend the Window interface to include our custom resetGridLevel property
@@ -89,49 +90,35 @@ export const App = () => {
         </div>
       )}
       {/* Модальное окно подтверждения возврата на главную */}
-      {showHomeConfirmation && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Подтверждение</h3>
-            <p>Вы уверены, что хотите вернуться на главную?</p>
-            <div className="modal-buttons">
-              <button onClick={() => {
-                handleBackToMenu();
-                setShowHomeConfirmation(false);
-              }} className="win-button">
-                Да
-              </button>
-              <button onClick={() => setShowHomeConfirmation(false)} className="win-button">
-                Нет
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={showHomeConfirmation}
+        onClose={() => setShowHomeConfirmation(false)}
+        title="Подтверждение"
+        message="Вы уверены, что хотите вернуться на главную?"
+        onConfirm={() => {
+          handleBackToMenu();
+          setShowHomeConfirmation(false);
+        }}
+        confirmText="Да"
+        cancelText="Нет"
+      />
       {/* Модальное окно подтверждения рестарта игры */}
-      {showRestartConfirmation && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>Подтверждение</h3>
-            <p>Вы уверены, что хотите начать заново?</p>
-            <div className="modal-buttons">
-              <button onClick={() => {
-                // Рестарт уровня - сброс до начального состояния
-                const resetFunction = window.resetGridLevel;
-                if (typeof resetFunction === 'function') {
-                  resetFunction();
-                }
-                setShowRestartConfirmation(false);
-              }} className="win-button">
-                Да
-              </button>
-              <button onClick={() => setShowRestartConfirmation(false)} className="win-button">
-                Нет
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={showRestartConfirmation}
+        onClose={() => setShowRestartConfirmation(false)}
+        title="Подтверждение"
+        message="Вы уверены, что хотите начать заново?"
+        onConfirm={() => {
+          // Рестарт уровня - сброс до начального состояния
+          const resetFunction = window.resetGridLevel;
+          if (typeof resetFunction === 'function') {
+            resetFunction();
+          }
+          setShowRestartConfirmation(false);
+        }}
+        confirmText="Да"
+        cancelText="Нет"
+      />
     </div>
   )
 }
